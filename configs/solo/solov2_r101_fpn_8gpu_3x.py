@@ -16,7 +16,7 @@ model = dict(
         start_level=0,
         num_outs=5),
     bbox_head=dict(
-        type='SOLOHead',
+        type='SOLOV2Head',
         num_classes=81,
         in_channels=256,
         stacked_convs=7,
@@ -83,8 +83,8 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    imgs_per_gpu=2,
-    workers_per_gpu=2,
+    imgs_per_gpu=1,
+    workers_per_gpu=1,
     train=dict(
         type=dataset_type,
         ann_file=data_root + 'annotations/instances_train2017.json',
@@ -124,7 +124,7 @@ total_epochs = 36
 device_ids = range(8)
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = './work_dirs/solo_release_r101_fpn_8gpu_3x'
+work_dir = './work_dirs/solov2_release_r101_fpn_8gpu_3x'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]
