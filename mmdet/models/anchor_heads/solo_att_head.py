@@ -117,6 +117,45 @@ class Conv2d_Group(_ConvNd_Group):
         return self.conv2d_forward(input, group, self.weight)
 
 
+class MaskAttModule(nn.Module):
+    def __init__(self, mask_in, out_channels):
+        super(MaskAttModule, self).__init__()
+        self.mask_conv = nn.Conv2d(mask_in, out_channels, 3, padding=1)
+        self.att_conv = Conv2d_Group(1, out_channels, 3, padding=1)
+        self.relu = nn.ReLU()
+
+    def forward(self, mask_feat, attention, group):
+        # mask_feat: N,C,H,W (C is the number of channels)
+        # attention: N,Ins,H,W (Ins is the number of instances)
+        mask_output = self.mask_conv(mask_feat)
+        att_output = self.att_conv(attention, group)
+        output = torch.cat([mask_output for i in range(group)], dim=1) + att_output
+        return self.relu(output)
+
+
+class InstanceHead(nn.Module):
+    def __init__(self, mask_in, out_channels, num_conv):
+        super(InstanceHead, self).__init__()
+        self.num_conv = num_conv
+        self.mask_att_module = MaskAttModule(mask_in, out_channels)
+        for i in range(num_conv):
+            setattr(self, 'conv_%d'%(i), Conv2d_Group(out_channels, out_channels, 3, padding=1))
+            setattr(self, 'relu_%d'%(i), nn.ReLU())
+        self.conv_final = Conv2d_Group(out_channels, 1, 3, padding=1)
+
+    def forward(self, mask_feat, attention, group):
+        # mask_feat: N,C,H,W (C is the number of channels)
+        # attention: N,Ins,H,W (Ins is the number of instances)
+        x = self.mask_att_module(mask_feat, attention, group)
+        for i in range(self.num_conv):
+            conv_layer = getattr(self, 'conv_%d'%(i))
+            relu_layer = getattr(self, 'relu_%d'%(i))
+            x = conv_layer(x, group)
+            x = relu_layer(x)
+        x = self.conv_final(x, group)
+        return x
+
+
 @HEADS.register_module
 class SOLOAttHead(nn.Module):
 
@@ -124,6 +163,8 @@ class SOLOAttHead(nn.Module):
                  num_classes,
                  in_channels,
                  seg_feat_channels=256,
+                 inst_feat_channels=8,
+                 inst_convs=1,
                  stacked_convs=4,
                  strides=(4, 8, 16, 32, 64),
                  base_edge_list=(16, 32, 64, 128, 256),
@@ -142,6 +183,8 @@ class SOLOAttHead(nn.Module):
         self.cate_out_channels = self.num_classes - 1
         self.in_channels = in_channels
         self.seg_feat_channels = seg_feat_channels
+        self.inst_feat_channels = inst_feat_channels
+        self.num_inst_convs = inst_convs
         self.stacked_convs = stacked_convs
         self.strides = strides
         self.sigma = sigma
@@ -158,8 +201,8 @@ class SOLOAttHead(nn.Module):
     def _init_layers(self):
         norm_cfg = dict(type='GN', num_groups=32, requires_grad=True)
         self.feature_convs = nn.ModuleList()
-        self.kernel_convs = nn.ModuleList()
         self.cate_convs = nn.ModuleList()
+        self.inst_convs = InstanceHead(self.seg_feat_channels, self.inst_feat_channels, num_inst_convs)
         
         # mask feature     
         for i in range(4):
@@ -178,10 +221,7 @@ class SOLOAttHead(nn.Module):
                 continue
             for j in range(i):
                 if j == 0:
-                    if i==3:
-                        in_channel = self.in_channels+2
-                    else:
-                        in_channel = self.in_channels
+                    in_channel = self.in_channels
                     one_conv = ConvModule(
                         in_channel,
                         self.seg_feat_channels,
@@ -210,21 +250,9 @@ class SOLOAttHead(nn.Module):
                     mode='bilinear',
                     align_corners=False)
                 convs_per_level.add_module('upsample' + str(j), one_upsample)
-            self.feature_convs.append(convs_per_level)
- 
+            self.feature_convs.append(convs_per_level) 
 
         for i in range(self.stacked_convs):
-            chn = self.in_channels + 2 if i == 0 else self.seg_feat_channels
-
-            self.kernel_convs.append(
-                ConvModule(
-                    chn,
-                    self.seg_feat_channels,
-                    3,
-                    stride=1,
-                    padding=1,
-                    norm_cfg=norm_cfg,
-                    bias=norm_cfg is None))
             chn = self.in_channels if i == 0 else self.seg_feat_channels 
             self.cate_convs.append(
                 ConvModule(
@@ -235,12 +263,11 @@ class SOLOAttHead(nn.Module):
                     padding=1,
                     norm_cfg=norm_cfg,
                     bias=norm_cfg is None))
-        self.solo_kernel = nn.Conv2d(
-            self.seg_feat_channels, self.seg_feat_channels, 1, padding=0)
         self.solo_cate = nn.Conv2d(
             self.seg_feat_channels, self.cate_out_channels, 3, padding=1)
         self.solo_mask = ConvModule(
             self.seg_feat_channels, self.seg_feat_channels, 1, padding=0, norm_cfg=norm_cfg, bias=norm_cfg is None)
+
  
     def init_weights(self):
         #TODO: init for feat_conv
@@ -249,8 +276,6 @@ class SOLOAttHead(nn.Module):
             for i in range(s):
                 if i%2 == 0:
                     normal_init(m[i].conv, std=0.01)
-        for m in self.kernel_convs:
-            normal_init(m.conv, std=0.01)
         for m in self.cate_convs:
             normal_init(m.conv, std=0.01)
         bias_cate = bias_init_with_prob(0.01)
@@ -260,20 +285,14 @@ class SOLOAttHead(nn.Module):
         new_feats = self.split_feats(feats)
         featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
         upsampled_size = (feats[0].shape[-2], feats[0].shape[-3])
-        kernel_pred, cate_pred = multi_apply(self.forward_single, new_feats,
+        cate_pred = multi_apply(self.forward_single, new_feats,
                                           list(range(len(self.seg_num_grids))),
                                           eval=eval)
-        # add coord for p5
-        x_range = torch.linspace(-1, 1, feats[-2].shape[-1], device=feats[-2].device)
-        y_range = torch.linspace(-1, 1, feats[-2].shape[-2], device=feats[-2].device)
-        y, x = torch.meshgrid(y_range, x_range)
-        y = y.expand([feats[-2].shape[0], 1, -1, -1])
-        x = x.expand([feats[-2].shape[0], 1, -1, -1])
-        coord_feat = torch.cat([x, y], 1)
+
         feature_add_all_level = self.feature_convs[0](feats[0]) 
         for i in range(1,3):
             feature_add_all_level = feature_add_all_level + self.feature_convs[i](feats[i])
-        feature_add_all_level = feature_add_all_level + self.feature_convs[3](torch.cat([feats[3],coord_feat],1))
+        feature_add_all_level = feature_add_all_level + self.feature_convs[3](feats[3])
         
         feature_pred = self.solo_mask(feature_add_all_level)   
         N, c, h, w = feature_pred.shape
@@ -298,25 +317,7 @@ class SOLOAttHead(nn.Module):
                 F.interpolate(feats[4], size=feats[3].shape[-2:], mode='bilinear'))
 
     def forward_single(self, x, idx, eval=False):
-        kernel_feat = x
         cate_feat = x
-        # kernel branch
-        # concat coord
- 
-        x_range = torch.linspace(-1, 1, kernel_feat.shape[-1], device=kernel_feat.device)
-        y_range = torch.linspace(-1, 1, kernel_feat.shape[-2], device=kernel_feat.device)
-        y, x = torch.meshgrid(y_range, x_range)
-        y = y.expand([kernel_feat.shape[0], 1, -1, -1])
-        x = x.expand([kernel_feat.shape[0], 1, -1, -1])
-        coord_feat = torch.cat([x, y], 1)
-        
-        kernel_feat = torch.cat([kernel_feat, coord_feat], 1)
-        for i, kernel_layer in enumerate(self.kernel_convs):
-            if i == self.cate_down_pos:
-                seg_num_grid = self.seg_num_grids[idx]
-                kernel_feat = F.interpolate(kernel_feat, size=seg_num_grid, mode='bilinear')    
-            kernel_feat = kernel_layer(kernel_feat)
-        kernel_pred = self.solo_kernel(kernel_feat)
         
         # cate branch
         for i, cate_layer in enumerate(self.cate_convs):
@@ -329,7 +330,7 @@ class SOLOAttHead(nn.Module):
         
         if eval:
            cate_pred = points_nms(cate_pred.sigmoid(), kernel=2).permute(0, 2, 3, 1)
-        return kernel_pred, cate_pred
+        return cate_pred
 
     def loss(self,
              ins_preds,
