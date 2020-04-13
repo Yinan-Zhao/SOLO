@@ -15,12 +15,12 @@ from .solo_head import SOLOHead
 from .decoupled_solo_head import DecoupledSOLOHead
 from .decoupled_solo_light_head import DecoupledSOLOLightHead
 from .solov2_head import SOLOV2Head
-from .solo_att_head import SOLOAttHead
+#from .solo_att_head import SOLOAttHead
 
 __all__ = [
     'AnchorHead', 'GuidedAnchorHead', 'FeatureAdaption', 'RPNHead',
     'GARPNHead', 'RetinaHead', 'RetinaSepBNHead', 'GARetinaHead', 'SSDHead',
     'FCOSHead', 'RepPointsHead', 'FoveaHead', 'FreeAnchorRetinaHead',
     'ATSSHead', 'SOLOHead', 'DecoupledSOLOHead', 'DecoupledSOLOLightHead', 
-    'SOLOV2Head', 'SOLOAttHead'
+    'SOLOV2Head', #'SOLOAttHead'
 ]
