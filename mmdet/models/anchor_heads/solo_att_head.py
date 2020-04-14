@@ -310,7 +310,7 @@ class SOLOAttHead(nn.Module):
         h_att_half = (h_att-1)//2
         w_att_half = (w_att-1)//2
 
-        attention = torch.zeros([N, 1, h, w], dtype=target_type, device=device)
+        attention = torch.zeros([N, 2, h, w], dtype=target_type, device=device)
         idx_h = idx // num_grid
         idx_w = idx % num_grid
         center_h = int(idx_h*h/num_grid)
@@ -349,6 +349,7 @@ class SOLOAttHead(nn.Module):
 
         for i in range(N):
             attention[i,0,h_min:h_max,w_min:w_max] = att_template[h_att_min:h_att_max,w_att_min:w_att_max]
+            attention[i,1,h_min:h_max,w_min:w_max] = att_template[h_att_min:h_att_max,w_att_min:w_att_max]
 
         return attention
 
