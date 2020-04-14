@@ -10,7 +10,7 @@ from ..registry import HEADS
 from ..utils import bias_init_with_prob, ConvModule
 from torch.nn.parameter import Parameter
 from torch.nn import init
-from torch.nn.utils import _single, _pair, _triple
+from torch.nn.modules.utils import _single, _pair, _triple
 
 INF = 1e8
 
@@ -191,12 +191,26 @@ class SOLOAttHead(nn.Module):
         self.cate_down_pos = cate_down_pos
         self.base_edge_list = base_edge_list
         self.scale_ranges = scale_ranges
+        self.gauss_ranges = gauss_ranges
         self.with_deform = with_deform
         self.loss_cate = build_loss(loss_cate)
         self.ins_loss_weight = loss_ins['loss_weight']
         self.conv_cfg = conv_cfg
         self.norm_cfg = norm_cfg
         self._init_layers()
+        self._init_fix_gauss_att()
+
+    def _init_fix_gauss_att(self):
+        from scipy.stats import multivariate_normal
+        x, y = np.mgrid[-1:1:.005, -1:1:.005]
+        pos = np.empty(x.shape + (2,))
+        pos[:, :, 0] = x; pos[:, :, 1] = y
+        rv = multivariate_normal([0., 0.], [[0.5, 0.], [0., 0.5]])
+        dist = 3*rv.pdf(pos)
+        self.att_pyramid = []
+        for height in self.gauss_ranges:
+            self.att_pyramid.append(resize(bottle, (height+1, height+1)))
+
 
     def _init_layers(self):
         norm_cfg = dict(type='GN', num_groups=32, requires_grad=True)
@@ -281,32 +295,89 @@ class SOLOAttHead(nn.Module):
         bias_cate = bias_init_with_prob(0.01)
         normal_init(self.solo_cate, std=0.01, bias=bias_cate)
 
+    def get_att_single(self, scale_idx, feature_pred, idx, eval=False):
+        device = feature_pred.device
+        target_type = feature_pred.dtype
+        N, c, h, w = feature_pred.shape
+        num_grid = self.num_grids[scale_idx]
+        att_template = self.att_pyramid[scale_idx]
+        h_att, w_att = att_template.shape
+        h_att_half = (h_att-1)//2
+        w_att_half = (w_att-1)//2
+
+        attention = torch.zeros([N, 1, h, w], dtype=target_type, device=device)
+        idx_h = idx // num_grid
+        idx_w = idx % num_grid
+        center_h = int(idx_h*h/num_grid)
+        center_w = int(idx_w*w/num_grid)
+
+        h_min_raw = center_h - h_att_half
+        h_max_raw = center_h + h_att_half + 1
+        w_min_raw = center_w - w_att_half
+        w_max_raw = center_w + w_att_half + 1
+
+        if h_min_raw < 0:
+            h_min = 0
+            h_att_min = h_min - h_min_raw
+        else:
+            h_min = h_min_raw
+            h_att_min = 0
+        if h_max_raw > h:
+            h_max = h
+            h_att_max = h_att - (h_max_raw-h)
+        else:
+            h_max = h_max_raw
+            h_att_max = h_att
+
+        if w_min_raw < 0:
+            w_min = 0
+            w_att_min = w_min - w_min_raw
+        else:
+            w_min = w_min_raw
+            w_att_min = 0
+        if w_max_raw > w:
+            w_max = w
+            w_att_max = w_att - (w_max_raw-w)
+        else:
+            w_max = w_max_raw
+            w_att_max = w_att
+
+        for i in range(N):
+            attention[i,0,h_min:h_max,w_min:w_max] = att_template[h_att_min:h_att_max,w_att_min:w_att_max]
+
+        return attention
+
+
     def forward(self, feats, eval=False):
         new_feats = self.split_feats(feats)
         featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
         upsampled_size = (feats[0].shape[-2], feats[0].shape[-3])
-        cate_pred = multi_apply(self.forward_single, new_feats,
-                                          list(range(len(self.seg_num_grids))),
-                                          eval=eval)
 
         feature_add_all_level = self.feature_convs[0](feats[0]) 
         for i in range(1,3):
             feature_add_all_level = feature_add_all_level + self.feature_convs[i](feats[i])
         feature_add_all_level = feature_add_all_level + self.feature_convs[3](feats[3])
         
-        feature_pred = self.solo_mask(feature_add_all_level)   
-        N, c, h, w = feature_pred.shape
-        feature_pred = feature_pred.view(-1, h, w).unsqueeze(0)
-        ins_pred = []
-        
-        for i in range(5):
-            kernel = kernel_pred[i].permute(0,2,3,1).contiguous().view(-1,c).unsqueeze(-1).unsqueeze(-1)
-            ins_i = F.conv2d(feature_pred, kernel, groups=N).view(N,self.seg_num_grids[i]**2, h,w)
-            if not eval:
-                ins_i = F.interpolate(ins_i, size=(featmap_sizes[i][0]*2,featmap_sizes[i][1]*2), mode='bilinear')
-            if eval:
-                ins_i=ins_i.sigmoid()
-            ins_pred.append(ins_i)
+        feature_pred = self.solo_mask(feature_add_all_level)  
+        attention_maps = [] 
+
+        for j in range(len(self.seg_num_grids)):
+            attention_maps_scale = multi_apply(self.get_att_single, 
+                                        [j for i in range(self.seg_num_grids[i]**2)],
+                                        [feature_pred for i in range(self.seg_num_grids[i]**2)],
+                                        list(range(self.seg_num_grids[i]**2)),
+                                        eval=eval)
+            attention_maps_scale = torch.cat(attention_maps_scale, dim=1)
+            attention_maps.append(attention_maps_scale)
+
+        ins_pred, cate_pred = multi_apply(self.forward_single, 
+                                        new_feats, 
+                                        [feature_pred for i in range(len(new_feats))],
+                                        attention_maps,
+                                        featmap_sizes,
+                                        list(range(len(self.seg_num_grids))),
+                                        eval=eval)
+
         return ins_pred, cate_pred
 
     def split_feats(self, feats):
@@ -316,9 +387,8 @@ class SOLOAttHead(nn.Module):
                 feats[3], 
                 F.interpolate(feats[4], size=feats[3].shape[-2:], mode='bilinear'))
 
-    def forward_single(self, x, idx, eval=False):
+    def forward_single(self, x, mask_feat, attention, featmap_size, idx, eval=False):
         cate_feat = x
-        
         # cate branch
         for i, cate_layer in enumerate(self.cate_convs):
             if i == self.cate_down_pos:
@@ -327,10 +397,15 @@ class SOLOAttHead(nn.Module):
             cate_feat = cate_layer(cate_feat)
 
         cate_pred = self.solo_cate(cate_feat)
+
+        inst_pred = self.inst_convs(mask_feat, attention, attention.shape[1])
         
         if eval:
-           cate_pred = points_nms(cate_pred.sigmoid(), kernel=2).permute(0, 2, 3, 1)
-        return cate_pred
+            cate_pred = points_nms(cate_pred.sigmoid(), kernel=2).permute(0, 2, 3, 1)
+            inst_pred = inst_pred.sigmoid()
+        else:
+            inst_pred = F.interpolate(inst_pred, size=(featmap_size[0]*2,featmap_size[1]*2), mode='bilinear')
+        return inst_pred, cate_pred
 
     def loss(self,
              ins_preds,

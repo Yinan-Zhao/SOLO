@@ -25,6 +25,7 @@ model = dict(
         inst_convs=1,
         strides=[8, 8, 16, 32, 32],
         scale_ranges=((1, 96), (48, 192), (96, 384), (192, 768), (384, 2048)),
+        gauss_ranges=(48, 96, 192, 384, 768),
         sigma=0.2,
         num_grids=[40, 36, 24, 16, 12],
         cate_down_pos=0,
