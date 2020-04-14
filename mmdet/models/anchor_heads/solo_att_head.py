@@ -303,7 +303,7 @@ class SOLOAttHead(nn.Module):
         device = feature_pred.device
         target_type = feature_pred.dtype
         N, c, h, w = feature_pred.shape
-        num_grid = self.num_grids[scale_idx]
+        num_grid = self.seg_num_grids[scale_idx]
         att_template = self.att_pyramid[scale_idx]
         h_att, w_att = att_template.shape
         h_att_half = (h_att-1)//2
