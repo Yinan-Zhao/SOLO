@@ -213,7 +213,7 @@ class SOLOAttHead(nn.Module):
         dist = 3*rv.pdf(pos)
         self.att_pyramid = []
         for height in self.gauss_ranges:
-            self.att_pyramid.append(resize(dist, (height+1, height+1)))
+            self.att_pyramid.append(torch.tensor(resize(dist, (height+1, height+1))).cuda())
 
 
     def _init_layers(self):
