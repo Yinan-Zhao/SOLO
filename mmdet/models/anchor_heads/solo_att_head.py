@@ -205,6 +205,7 @@ class SOLOAttHead(nn.Module):
 
     def _init_fix_gauss_att(self):
         from scipy.stats import multivariate_normal
+        from skimage.transform import resize
         x, y = np.mgrid[-1:1:.005, -1:1:.005]
         pos = np.empty(x.shape + (2,))
         pos[:, :, 0] = x; pos[:, :, 1] = y
