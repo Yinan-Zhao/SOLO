@@ -383,6 +383,8 @@ class SOLOAttHead(nn.Module):
             attention_maps_scale = torch.cat(attention_maps_scale, dim=1)
             attention_maps.append(attention_maps_scale)
 
+        pdb.set_trace()
+
         ins_pred, cate_pred = multi_apply(self.forward_single, 
                                         new_feats, 
                                         [feature_pred for i in range(len(new_feats))],
@@ -390,6 +392,8 @@ class SOLOAttHead(nn.Module):
                                         featmap_sizes,
                                         list(range(len(self.seg_num_grids))),
                                         eval=eval)
+
+        pdb.set_trace()
 
         return ins_pred, cate_pred
 
