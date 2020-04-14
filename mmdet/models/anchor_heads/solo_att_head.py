@@ -111,19 +111,20 @@ class Conv2d_Group(_ConvNd_Group):
             in_channels, out_channels, kernel_size, stride, padding, dilation,
             False, _pair(0), bias, padding_mode)
 
-    def conv2d_forward(self, input, group, weight):
+    def conv2d_forward(self, input, group, weight, bias):
         weight_cat = torch.cat([weight for i in range(group)])
+        bias_cat = torch.cat([bias for i in range(group)])
         if self.padding_mode == 'circular':
             expanded_padding = ((self.padding[1] + 1) // 2, self.padding[1] // 2,
                                 (self.padding[0] + 1) // 2, self.padding[0] // 2)
             return F.conv2d(F.pad(input, expanded_padding, mode='circular'),
-                            weight_cat, self.bias, self.stride,
+                            weight_cat, bias_cat, self.stride,
                             _pair(0), self.dilation, group)
-        return F.conv2d(input, weight_cat, self.bias, self.stride,
+        return F.conv2d(input, weight_cat, bias_cat, self.stride,
                         self.padding, self.dilation, group)
 
     def forward(self, input, group):
-        return self.conv2d_forward(input, group, self.weight)
+        return self.conv2d_forward(input, group, self.weight, self.bias)
 
 
 class MaskAttModule(nn.Module):
