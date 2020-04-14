@@ -312,7 +312,8 @@ class SOLOAttHead(nn.Module):
 
         N = 3
 
-        attention = torch.zeros([N, 2, h, w], dtype=target_type, device=device)
+        #attention = torch.zeros([N, 2, h, w], dtype=target_type, device=device)
+        attention = torch.zeros([N, 2, h, w], dtype=target_type)
         idx_h = idx // num_grid
         idx_w = idx % num_grid
         center_h = int(idx_h*h/num_grid)
