@@ -13,6 +13,7 @@ from ..utils import bias_init_with_prob, ConvModule
 from torch.nn.parameter import Parameter
 from torch.nn import init
 from torch.nn.modules.utils import _single, _pair, _triple
+import pdb
 
 INF = 1e8
 
@@ -371,6 +372,7 @@ class SOLOAttHead(nn.Module):
                                         [feature_pred for i in range(self.seg_num_grids[i]**2)],
                                         list(range(self.seg_num_grids[i]**2)),
                                         eval=eval)
+            pdb.set_trace()
             attention_maps_scale = torch.cat(attention_maps_scale, dim=1)
             attention_maps.append(attention_maps_scale)
 
