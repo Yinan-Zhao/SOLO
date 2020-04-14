@@ -217,7 +217,7 @@ class SOLOAttHead(nn.Module):
         norm_cfg = dict(type='GN', num_groups=32, requires_grad=True)
         self.feature_convs = nn.ModuleList()
         self.cate_convs = nn.ModuleList()
-        self.inst_convs = InstanceHead(self.seg_feat_channels, self.inst_feat_channels, num_inst_convs)
+        self.inst_convs = InstanceHead(self.seg_feat_channels, self.inst_feat_channels, self.num_inst_convs)
         
         # mask feature     
         for i in range(4):
