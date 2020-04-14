@@ -15,7 +15,6 @@ from torch.nn import init
 from torch.nn.modules.utils import _single, _pair, _triple
 from functools import partial
 from six.moves import map
-import pdb
 
 INF = 1e8
 
@@ -317,10 +316,8 @@ class SOLOAttHead(nn.Module):
         h_att_half = (h_att-1)//2
         w_att_half = (w_att-1)//2
 
-        N = 3
-
         #attention = torch.zeros([N, 2, h, w], dtype=target_type, device=device)
-        attention = torch.zeros([N, 2, h, w], dtype=target_type)
+        attention = torch.zeros([N, 1, h, w], dtype=target_type)
         idx_h = idx // num_grid
         idx_w = idx % num_grid
         center_h = int(idx_h*h/num_grid)
@@ -359,7 +356,6 @@ class SOLOAttHead(nn.Module):
 
         for i in range(N):
             attention[i,0,h_min:h_max,w_min:w_max] = att_template[h_att_min:h_att_max,w_att_min:w_att_max]
-            attention[i,1,h_min:h_max,w_min:w_max] = att_template[h_att_min:h_att_max,w_att_min:w_att_max]
 
         return attention
 
@@ -383,7 +379,6 @@ class SOLOAttHead(nn.Module):
                                         [feature_pred for i in range(self.seg_num_grids[j]**2)],
                                         list(range(self.seg_num_grids[j]**2)),
                                         eval=eval)
-            pdb.set_trace()
             attention_maps_scale = torch.cat(attention_maps_scale, dim=1)
             attention_maps.append(attention_maps_scale)
 
