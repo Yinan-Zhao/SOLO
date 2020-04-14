@@ -15,6 +15,7 @@ from torch.nn import init
 from torch.nn.modules.utils import _single, _pair, _triple
 from functools import partial
 from six.moves import map
+import pdb
 
 INF = 1e8
 
@@ -442,7 +443,7 @@ class SOLOAttHead(nn.Module):
                                  for ins_labels_level_img, ins_ind_labels_level_img in
                                  zip(ins_labels_level, ins_ind_labels_level)], 0)
                       for ins_labels_level, ins_ind_labels_level in zip(zip(*ins_label_list), zip(*ins_ind_label_list))]
-
+        pdb.set_trace()
         ins_preds = [torch.cat([ins_preds_level_img[ins_ind_labels_level_img, ...]
                                 for ins_preds_level_img, ins_ind_labels_level_img in
                                 zip(ins_preds_level, ins_ind_labels_level)], 0)
