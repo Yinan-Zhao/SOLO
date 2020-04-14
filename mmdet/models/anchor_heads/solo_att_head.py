@@ -368,9 +368,9 @@ class SOLOAttHead(nn.Module):
 
         for j in range(len(self.seg_num_grids)):
             attention_maps_scale = multi_apply(self.get_att_single, 
-                                        [j for i in range(self.seg_num_grids[i]**2)],
-                                        [feature_pred for i in range(self.seg_num_grids[i]**2)],
-                                        list(range(self.seg_num_grids[i]**2)),
+                                        [j for i in range(self.seg_num_grids[j]**2)],
+                                        [feature_pred for i in range(self.seg_num_grids[j]**2)],
+                                        list(range(self.seg_num_grids[j]**2)),
                                         eval=eval)
             pdb.set_trace()
             attention_maps_scale = torch.cat(attention_maps_scale, dim=1)
