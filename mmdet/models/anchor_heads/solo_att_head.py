@@ -383,8 +383,6 @@ class SOLOAttHead(nn.Module):
             attention_maps_scale = torch.cat(attention_maps_scale, dim=1)
             attention_maps.append(attention_maps_scale)
 
-        pdb.set_trace()
-
         ins_pred, cate_pred = multi_apply(self.forward_single, 
                                         new_feats, 
                                         [feature_pred for i in range(len(new_feats))],
@@ -392,8 +390,6 @@ class SOLOAttHead(nn.Module):
                                         featmap_sizes,
                                         list(range(len(self.seg_num_grids))),
                                         eval=eval)
-
-        pdb.set_trace()
 
         return ins_pred, cate_pred
 
@@ -442,13 +438,11 @@ class SOLOAttHead(nn.Module):
             gt_mask_list,
             featmap_sizes=featmap_sizes)
 
-        pdb.set_trace()
         # ins
         ins_labels = [torch.cat([ins_labels_level_img[ins_ind_labels_level_img, ...]
                                  for ins_labels_level_img, ins_ind_labels_level_img in
                                  zip(ins_labels_level, ins_ind_labels_level)], 0)
                       for ins_labels_level, ins_ind_labels_level in zip(zip(*ins_label_list), zip(*ins_ind_label_list))]
-        pdb.set_trace()
         ins_preds = [torch.cat([ins_preds_level_img[ins_ind_labels_level_img, ...]
                                 for ins_preds_level_img, ins_ind_labels_level_img in
                                 zip(ins_preds_level, ins_ind_labels_level)], 0)
