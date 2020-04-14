@@ -438,6 +438,7 @@ class SOLOAttHead(nn.Module):
             gt_mask_list,
             featmap_sizes=featmap_sizes)
 
+        pdb.set_trace()
         # ins
         ins_labels = [torch.cat([ins_labels_level_img[ins_ind_labels_level_img, ...]
                                  for ins_labels_level_img, ins_ind_labels_level_img in
