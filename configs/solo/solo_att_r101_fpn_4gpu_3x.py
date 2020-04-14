@@ -124,10 +124,10 @@ log_config = dict(
 # yapf:enable
 # runtime settings
 total_epochs = 36
-device_ids = range(8)
+device_ids = range(4)
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = './work_dirs/solo_att_release_r101_fpn_8gpu_3x'
+work_dir = './work_dirs/solo_att_release_r101_fpn_4gpu_3x'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]
