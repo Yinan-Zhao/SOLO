@@ -169,6 +169,7 @@ class SOLOAttHead(nn.Module):
                  strides=(4, 8, 16, 32, 64),
                  base_edge_list=(16, 32, 64, 128, 256),
                  scale_ranges=((8, 32), (16, 64), (32, 128), (64, 256), (128, 512)),
+                 gauss_ranges=(48, 96, 192, 384, 768),
                  sigma=0.4,
                  num_grids=None,
                  cate_down_pos=0,
