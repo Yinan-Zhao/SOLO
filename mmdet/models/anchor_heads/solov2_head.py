@@ -172,7 +172,6 @@ class SOLOV2Head(nn.Module):
 
     def forward(self, feats, eval=False):
         new_feats = self.split_feats(feats)
-        pdb.set_trace()
         featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
         upsampled_size = (feats[0].shape[-2], feats[0].shape[-3])
         kernel_pred, cate_pred = multi_apply(self.forward_single, new_feats,
