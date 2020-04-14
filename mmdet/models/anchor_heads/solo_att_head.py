@@ -350,8 +350,6 @@ class SOLOAttHead(nn.Module):
         for i in range(N):
             attention[i,0,h_min:h_max,w_min:w_max] = att_template[h_att_min:h_att_max,w_att_min:w_att_max]
 
-        pdb.set_trace()
-
         return attention
 
 
