@@ -13,6 +13,8 @@ from ..utils import bias_init_with_prob, ConvModule
 from torch.nn.parameter import Parameter
 from torch.nn import init
 from torch.nn.modules.utils import _single, _pair, _triple
+from functools import partial
+from six.moves import map
 import pdb
 
 INF = 1e8
