@@ -19,6 +19,11 @@ INF = 1e8
 
 from scipy import ndimage
 
+def multi_apply_custom(func, *args, **kwargs):
+    pfunc = partial(func, **kwargs) if kwargs else func
+    map_results = map(pfunc, *args)
+    return list(map_results)
+
 def points_nms(heat, kernel=2):
     # kernel must be 2
     hmax = nn.functional.max_pool2d(
@@ -371,7 +376,7 @@ class SOLOAttHead(nn.Module):
         attention_maps = [] 
 
         for j in range(len(self.seg_num_grids)):
-            attention_maps_scale = multi_apply(self.get_att_single, 
+            attention_maps_scale = multi_apply_custom(self.get_att_single, 
                                         [j for i in range(self.seg_num_grids[j]**2)],
                                         [feature_pred for i in range(self.seg_num_grids[j]**2)],
                                         list(range(self.seg_num_grids[j]**2)),
