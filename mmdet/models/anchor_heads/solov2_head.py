@@ -178,6 +178,7 @@ class SOLOV2Head(nn.Module):
         kernel_pred, cate_pred = multi_apply(self.forward_single, new_feats,
                                           list(range(len(self.seg_num_grids))),
                                           eval=eval)
+        pdb.set_trace()
         # add coord for p5
         x_range = torch.linspace(-1, 1, feats[-2].shape[-1], device=feats[-2].device)
         y_range = torch.linspace(-1, 1, feats[-2].shape[-2], device=feats[-2].device)
