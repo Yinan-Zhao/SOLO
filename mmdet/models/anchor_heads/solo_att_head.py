@@ -477,7 +477,8 @@ class SOLOAttHead(nn.Module):
                                         [feature_pred for i in range(len(ins_ind_index[j]))],
                                         ins_ind_index[j],
                                         eval=eval)
-            attention_maps_scale = torch.cat(attention_maps_scale, dim=1)
+            if len(attention_maps_scale):
+                attention_maps_scale = torch.cat(attention_maps_scale, dim=1)
             attention_maps.append(attention_maps_scale)
 
         ins_preds, cate_preds = multi_apply(self.forward_single, 
