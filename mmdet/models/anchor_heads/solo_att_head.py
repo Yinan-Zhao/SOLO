@@ -468,6 +468,8 @@ class SOLOAttHead(nn.Module):
         loss_ins = torch.cat(loss_ins).mean()
         loss_ins = loss_ins * self.ins_loss_weight
 
+        pdb.set_trace()
+
         # cate
         cate_labels = [
             torch.cat([cate_labels_level_img.flatten()
