@@ -417,6 +417,7 @@ class SOLOAttHead(nn.Module):
                 inst_pred = inst_pred.sigmoid()
             else:
                 inst_pred = F.interpolate(inst_pred, size=(featmap_size[0]*2,featmap_size[1]*2), mode='bilinear')
+                pdb.set_trace()
         else:
             device = mask_feat.device
             target_type = mask_feat.dtype
