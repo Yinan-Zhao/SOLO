@@ -479,6 +479,11 @@ class SOLOAttHead(nn.Module):
                                         eval=eval)
             if len(attention_maps_scale):
                 attention_maps_scale = torch.cat(attention_maps_scale, dim=1)
+            else:
+                device = feature_pred.device
+                target_type = feature_pred.dtype
+                N, c, h, w = feature_pred.shape
+                attention_maps_scale = torch.zeros([N, 0, h, w], dtype=target_type, device=device)
             attention_maps.append(attention_maps_scale)
 
         ins_preds, cate_preds = multi_apply(self.forward_single, 
