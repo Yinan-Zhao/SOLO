@@ -479,6 +479,8 @@ class SOLOAttHead(nn.Module):
         feature_pred = self.solo_mask(feature_add_all_level)  
         attention_maps = [] 
 
+        pdb.set_trace()
+
         for j in range(len(self.seg_num_grids)):
             attention_maps_scale = multi_apply_custom(self.get_att_single, 
                                         [j for i in range(len(ins_ind_index[j]))],
@@ -494,7 +496,6 @@ class SOLOAttHead(nn.Module):
                 attention_maps_scale = torch.zeros([N, 0, h, w], dtype=target_type, device=device)
             attention_maps.append(attention_maps_scale)
 
-        pdb.set_trace()
 
 
         ins_preds_raw, cate_preds = multi_apply(self.forward_single, 
