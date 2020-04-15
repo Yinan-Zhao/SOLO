@@ -465,6 +465,12 @@ class SOLOAttHead(nn.Module):
         flatten_ins_ind_labels = torch.cat(ins_ind_labels)
         num_ins = flatten_ins_ind_labels.int().sum()
 
+        ins_ind_count_img = [
+            [ins_ind_labels_level_img.flatten().int().sum()
+                       for ins_ind_labels_level_img in ins_ind_labels_level]
+            for ins_ind_labels_level in zip(*ins_ind_label_list)
+        ]
+
         ins_ind_index = []
         for i in range(len(ins_ind_labels)):
             ins_ind_index.append(torch.nonzero(ins_ind_labels[i])[:,0])
