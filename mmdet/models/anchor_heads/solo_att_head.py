@@ -43,7 +43,7 @@ def dice_loss(input, target):
     d = (2 * a) / (b + c)
     return 1-d
 
-class _ConvNd_Group(nn.Module):
+'''class _ConvNd_Group(nn.Module):
 
     __constants__ = ['stride', 'padding', 'dilation', 'bias',
                      'padding_mode', 'output_padding', 'in_channels',
@@ -164,6 +164,44 @@ class InstanceHead(nn.Module):
             x = conv_layer(x, group)
             x = relu_layer(x)
         x = self.conv_final(x, group)
+        return x'''
+
+class MaskAttModule(nn.Module):
+    def __init__(self, mask_in, out_channels):
+        super(MaskAttModule, self).__init__()
+        self.mask_conv = nn.Conv2d(mask_in, out_channels, 3, padding=1)
+        self.att_conv = nn.Conv2d(1, out_channels, 3, padding=1)
+        self.relu = nn.ReLU()
+
+    def forward(self, mask_feat, attention, ins_ind_count):
+        mask_output_raw = self.mask_conv(mask_feat)
+        att_output = self.att_conv(attention)
+        mask_output = []
+        for i in range(len(ins_ind_count)):
+            mask_output += [mask_output_raw[None,i] for j in range(ins_ind_count[i])]
+        output = torch.cat(mask_output, dim=0) + att_output
+        return self.relu(output)
+
+class InstanceHead(nn.Module):
+    def __init__(self, mask_in, out_channels, num_conv):
+        super(InstanceHead, self).__init__()
+        self.num_conv = num_conv
+        self.mask_att_module = MaskAttModule(mask_in, out_channels)
+        for i in range(num_conv):
+            setattr(self, 'conv_%d'%(i), nn.Conv2d(out_channels, out_channels, 3, padding=1))
+            setattr(self, 'relu_%d'%(i), nn.ReLU())
+        self.conv_final = nn.Conv2d(out_channels, 1, 3, padding=1)
+
+    def forward(self, mask_feat, attention, ins_ind_count):
+        # mask_feat: N,C,H,W (C is the number of channels)
+        # attention: N,Ins,H,W (Ins is the number of instances)
+        x = self.mask_att_module(mask_feat, attention, ins_ind_count)
+        for i in range(self.num_conv):
+            conv_layer = getattr(self, 'conv_%d'%(i))
+            relu_layer = getattr(self, 'relu_%d'%(i))
+            x = conv_layer(x)
+            x = relu_layer(x)
+        x = self.conv_final(x)
         return x
 
 
@@ -308,7 +346,7 @@ class SOLOAttHead(nn.Module):
         bias_cate = bias_init_with_prob(0.01)
         normal_init(self.solo_cate, std=0.01, bias=bias_cate)
 
-    def get_att_single(self, scale_idx, feature_pred, idx, is_eval=False):
+    def get_att_single(self, scale_idx, feature_pred, idx_raw, is_eval=False):
         device = feature_pred.device
         target_type = feature_pred.dtype
         N, c, h, w = feature_pred.shape
@@ -318,7 +356,8 @@ class SOLOAttHead(nn.Module):
         h_att_half = (h_att-1)//2
         w_att_half = (w_att-1)//2
 
-        attention = torch.zeros([N, 1, h, w], dtype=target_type, device=device)
+        attention = torch.zeros([1, 1, h, w], dtype=target_type, device=device)
+        idx = idx_raw % (num_grid**2)
         idx_h = idx // num_grid
         idx_w = idx % num_grid
         center_h = int(idx_h*h/num_grid)
@@ -355,8 +394,7 @@ class SOLOAttHead(nn.Module):
             w_max = w_max_raw
             w_att_max = w_att
 
-        for i in range(N):
-            attention[i,0,h_min:h_max,w_min:w_max] = att_template[h_att_min:h_att_max,w_att_min:w_att_max]
+        attention[0,0,h_min:h_max,w_min:w_max] = att_template[h_att_min:h_att_max,w_att_min:w_att_max]
 
         return attention
 
@@ -400,7 +438,7 @@ class SOLOAttHead(nn.Module):
                 feats[3], 
                 F.interpolate(feats[4], size=feats[3].shape[-2:], mode='bilinear'))
 
-    def forward_single(self, x, mask_feat, attention, featmap_size, idx, is_eval=False):
+    def forward_single(self, x, mask_feat, attention, ins_ind_count, featmap_size, idx, is_eval=False):
         cate_feat = x
         # cate branch
         for i, cate_layer in enumerate(self.cate_convs):
@@ -411,8 +449,8 @@ class SOLOAttHead(nn.Module):
 
         cate_pred = self.solo_cate(cate_feat)
 
-        if attention.shape[1]:
-            inst_pred = self.inst_convs(mask_feat, attention, attention.shape[1])
+        if attention.shape[0]:
+            inst_pred = self.inst_convs(mask_feat, attention, ins_ind_count)
             if is_eval:
                 inst_pred = inst_pred.sigmoid()
             else:
@@ -422,7 +460,7 @@ class SOLOAttHead(nn.Module):
             device = mask_feat.device
             target_type = mask_feat.dtype
             N, c, h, w = mask_feat.shape
-            inst_pred = torch.zeros([N, 0, h, w], dtype=target_type, device=device)
+            inst_pred = torch.zeros([0, 1, h, w], dtype=target_type, device=device)
 
         if is_eval:
             cate_pred = points_nms(cate_pred.sigmoid(), kernel=2).permute(0, 2, 3, 1)
@@ -485,7 +523,6 @@ class SOLOAttHead(nn.Module):
         feature_pred = self.solo_mask(feature_add_all_level)  
         attention_maps = [] 
 
-        pdb.set_trace()
 
         for j in range(len(self.seg_num_grids)):
             attention_maps_scale = multi_apply_custom(self.get_att_single, 
@@ -494,12 +531,12 @@ class SOLOAttHead(nn.Module):
                                         ins_ind_index[j],
                                         is_eval=False)
             if len(attention_maps_scale):
-                attention_maps_scale = torch.cat(attention_maps_scale, dim=1)
+                attention_maps_scale = torch.cat(attention_maps_scale, dim=0)
             else:
                 device = feature_pred.device
                 target_type = feature_pred.dtype
                 N, c, h, w = feature_pred.shape
-                attention_maps_scale = torch.zeros([N, 0, h, w], dtype=target_type, device=device)
+                attention_maps_scale = torch.zeros([0, 1, h, w], dtype=target_type, device=device)
             attention_maps.append(attention_maps_scale)
 
 
@@ -508,13 +545,14 @@ class SOLOAttHead(nn.Module):
                                         new_feats, 
                                         [feature_pred for i in range(len(new_feats))],
                                         attention_maps,
+                                        ins_ind_count_img,
                                         featmap_sizes,
                                         list(range(len(self.seg_num_grids))),
                                         is_eval=False)
 
-        ins_preds = []
-        for inst_level in ins_preds_raw:
-            ins_preds.append(torch.cat([inst_level[i] for i in range(inst_level.shape[0])], dim=0))
+        ins_preds = [ins[:,0,...] for ins in ins_preds_raw]
+        '''for inst_level in ins_preds_raw:
+            ins_preds.append(torch.cat([inst_level[i] for i in range(inst_level.shape[0])], dim=0))'''
 
 
 
