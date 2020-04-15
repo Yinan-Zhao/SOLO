@@ -1,6 +1,6 @@
 # model settings
 model = dict(
-    type='SOLO',
+    type='SOLOATT',
     pretrained='torchvision://resnet101',
     backbone=dict(
         type='ResNet',

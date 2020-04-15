@@ -361,7 +361,7 @@ class SOLOAttHead(nn.Module):
         return attention
 
 
-    def forward(self, feats, eval=False):
+    '''def forward(self, feats, eval=False):
         new_feats = self.split_feats(feats)
         featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
         upsampled_size = (feats[0].shape[-2], feats[0].shape[-3])
@@ -391,7 +391,7 @@ class SOLOAttHead(nn.Module):
                                         list(range(len(self.seg_num_grids))),
                                         eval=eval)
 
-        return ins_pred, cate_pred
+        return ins_pred, cate_pred'''
 
     def split_feats(self, feats):
         return (F.interpolate(feats[0], scale_factor=0.5, mode='bilinear'), 
@@ -421,8 +421,7 @@ class SOLOAttHead(nn.Module):
         return inst_pred, cate_pred
 
     def loss(self,
-             ins_preds,
-             cate_preds,
+             feats,
              gt_bbox_list,
              gt_label_list,
              gt_mask_list,
@@ -431,6 +430,10 @@ class SOLOAttHead(nn.Module):
              gt_bboxes_ignore=None):
         featmap_sizes = [featmap.size()[-2:] for featmap in
                          ins_preds]
+        # ins_ind_label_list is a list with only one element
+        # ins_ind_label_list[0][0]: 1600,  ins_ind_label_list[0][1]: 1296
+        # cate_label_list[0][0]: 40x40,  cate_label_list[0][1]: 36x36
+        # ins_label_list[0][0]: 1600x288x192,  ins_label_list[0][0]:1296x288x192
         ins_label_list, cate_label_list, ins_ind_label_list = multi_apply(
             self.solo_target_single,
             gt_bbox_list,
@@ -438,19 +441,11 @@ class SOLOAttHead(nn.Module):
             gt_mask_list,
             featmap_sizes=featmap_sizes)
 
-        pdb.set_trace()
         # ins
         ins_labels = [torch.cat([ins_labels_level_img[ins_ind_labels_level_img, ...]
                                  for ins_labels_level_img, ins_ind_labels_level_img in
                                  zip(ins_labels_level, ins_ind_labels_level)], 0)
                       for ins_labels_level, ins_ind_labels_level in zip(zip(*ins_label_list), zip(*ins_ind_label_list))]
-        ins_preds = [torch.cat([ins_preds_level_img[ins_ind_labels_level_img, ...]
-                                for ins_preds_level_img, ins_ind_labels_level_img in
-                                zip(ins_preds_level, ins_ind_labels_level)], 0)
-                     for ins_preds_level, ins_ind_labels_level in zip(ins_preds, zip(*ins_ind_label_list))]
-
-        pdb.set_trace()
-
 
         ins_ind_labels = [
             torch.cat([ins_ind_labels_level_img.flatten()
@@ -458,8 +453,51 @@ class SOLOAttHead(nn.Module):
             for ins_ind_labels_level in zip(*ins_ind_label_list)
         ]
         flatten_ins_ind_labels = torch.cat(ins_ind_labels)
-
         num_ins = flatten_ins_ind_labels.int().sum()
+
+        ins_ind_index = []
+        for i in range(len(ins_ind_labels)):
+            ins_ind_index.append(torch.nonzero(ins_ind_labels[i])[:,0])
+        
+
+        new_feats = self.split_feats(feats)
+        featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
+        upsampled_size = (feats[0].shape[-2], feats[0].shape[-3])
+
+        feature_add_all_level = self.feature_convs[0](feats[0]) 
+        for i in range(1,3):
+            feature_add_all_level = feature_add_all_level + self.feature_convs[i](feats[i])
+        feature_add_all_level = feature_add_all_level + self.feature_convs[3](feats[3])
+
+        feature_pred = self.solo_mask(feature_add_all_level)  
+        attention_maps = [] 
+
+        for j in range(len(self.seg_num_grids)):
+            attention_maps_scale = multi_apply_custom(self.get_att_single, 
+                                        [j for i in range(len(ins_ind_index[j]))],
+                                        [feature_pred for i in range(len(ins_ind_index[j]))],
+                                        ins_ind_index[j],
+                                        eval=eval)
+            attention_maps_scale = torch.cat(attention_maps_scale, dim=1)
+            attention_maps.append(attention_maps_scale)
+
+        ins_preds, cate_preds = multi_apply(self.forward_single, 
+                                        new_feats, 
+                                        [feature_pred for i in range(len(new_feats))],
+                                        attention_maps,
+                                        featmap_sizes,
+                                        list(range(len(self.seg_num_grids))),
+                                        eval=eval)
+
+
+
+        '''ins_preds = [torch.cat([ins_preds_level_img[ins_ind_labels_level_img, ...]
+                                for ins_preds_level_img, ins_ind_labels_level_img in
+                                zip(ins_preds_level, ins_ind_labels_level)], 0)
+                     for ins_preds_level, ins_ind_labels_level in zip(ins_preds, zip(*ins_ind_label_list))]'''
+
+
+
         
         # dice loss
         loss_ins = []
@@ -470,8 +508,6 @@ class SOLOAttHead(nn.Module):
             loss_ins.append(dice_loss(input, target))
         loss_ins = torch.cat(loss_ins).mean()
         loss_ins = loss_ins * self.ins_loss_weight
-
-        pdb.set_trace()
 
         # cate
         cate_labels = [
