@@ -426,7 +426,6 @@ class SOLOAttHead(nn.Module):
 
         if is_eval:
             cate_pred = points_nms(cate_pred.sigmoid(), kernel=2).permute(0, 2, 3, 1)
-        pdb.set_trace()
         return inst_pred, cate_pred
 
     def loss(self,
