@@ -417,7 +417,7 @@ class SOLOAttHead(nn.Module):
                 inst_pred = inst_pred.sigmoid()
             else:
                 inst_pred = F.interpolate(inst_pred, size=(featmap_size[0]*2,featmap_size[1]*2), mode='bilinear')
-                pdb.set_trace()
+
         else:
             device = mask_feat.device
             target_type = mask_feat.dtype
@@ -426,6 +426,7 @@ class SOLOAttHead(nn.Module):
 
         if eval:
             cate_pred = points_nms(cate_pred.sigmoid(), kernel=2).permute(0, 2, 3, 1)
+        pdb.set_trace()
         return inst_pred, cate_pred
 
     def loss(self,
