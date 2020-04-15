@@ -501,9 +501,9 @@ class SOLOAttHead(nn.Module):
                                         list(range(len(self.seg_num_grids))),
                                         eval=eval)
 
-        ins_labels = []
+        ins_preds = []
         for inst_level in ins_preds_raw:
-            ins_labels.append(torch.cat([inst_level[i] for i in range(inst_level.shape[0])], dim=0))
+            ins_preds.append(torch.cat([inst_level[i] for i in range(inst_level.shape[0])], dim=0))
 
 
 
