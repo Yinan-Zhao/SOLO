@@ -438,6 +438,7 @@ class SOLOAttHead(nn.Module):
             gt_mask_list,
             featmap_sizes=featmap_sizes)
 
+        pdb.set_trace()
         # ins
         ins_labels = [torch.cat([ins_labels_level_img[ins_ind_labels_level_img, ...]
                                  for ins_labels_level_img, ins_ind_labels_level_img in
@@ -447,6 +448,8 @@ class SOLOAttHead(nn.Module):
                                 for ins_preds_level_img, ins_ind_labels_level_img in
                                 zip(ins_preds_level, ins_ind_labels_level)], 0)
                      for ins_preds_level, ins_ind_labels_level in zip(ins_preds, zip(*ins_ind_label_list))]
+
+        pdb.set_trace()
 
 
         ins_ind_labels = [
