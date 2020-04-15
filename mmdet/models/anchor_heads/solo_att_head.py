@@ -428,8 +428,10 @@ class SOLOAttHead(nn.Module):
              img_metas,
              cfg,
              gt_bboxes_ignore=None):
-        featmap_sizes = [featmap.size()[-2:] for featmap in
-                         ins_preds]
+        new_feats = self.split_feats(feats)
+        featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
+        featmap_sizes_pred = [(featmap.size()[-2]*2, featmap.size()[-1]*2) for featmap in
+                         new_feats]
         # ins_ind_label_list is a list with only one element
         # ins_ind_label_list[0][0]: 1600,  ins_ind_label_list[0][1]: 1296
         # cate_label_list[0][0]: 40x40,  cate_label_list[0][1]: 36x36
@@ -439,7 +441,7 @@ class SOLOAttHead(nn.Module):
             gt_bbox_list,
             gt_label_list,
             gt_mask_list,
-            featmap_sizes=featmap_sizes)
+            featmap_sizes=featmap_sizes_pred)
 
         # ins
         ins_labels = [torch.cat([ins_labels_level_img[ins_ind_labels_level_img, ...]
@@ -460,9 +462,6 @@ class SOLOAttHead(nn.Module):
             ins_ind_index.append(torch.nonzero(ins_ind_labels[i])[:,0])
         
 
-        new_feats = self.split_feats(feats)
-        featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
-        upsampled_size = (feats[0].shape[-2], feats[0].shape[-3])
 
         feature_add_all_level = self.feature_convs[0](feats[0]) 
         for i in range(1,3):
