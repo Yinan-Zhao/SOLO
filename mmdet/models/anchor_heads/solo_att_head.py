@@ -411,13 +411,20 @@ class SOLOAttHead(nn.Module):
 
         cate_pred = self.solo_cate(cate_feat)
 
-        inst_pred = self.inst_convs(mask_feat, attention, attention.shape[1])
-        
+        if attention.shape[1]:
+            inst_pred = self.inst_convs(mask_feat, attention, attention.shape[1])
+            if eval:
+                inst_pred = inst_pred.sigmoid()
+            else:
+                inst_pred = F.interpolate(inst_pred, size=(featmap_size[0]*2,featmap_size[1]*2), mode='bilinear')
+        else:
+            device = mask_feat.device
+            target_type = mask_feat.dtype
+            N, c, h, w = mask_feat.shape
+            inst_pred = torch.zeros([N, 0, h, w], dtype=target_type, device=device)
+
         if eval:
             cate_pred = points_nms(cate_pred.sigmoid(), kernel=2).permute(0, 2, 3, 1)
-            inst_pred = inst_pred.sigmoid()
-        else:
-            inst_pred = F.interpolate(inst_pred, size=(featmap_size[0]*2,featmap_size[1]*2), mode='bilinear')
         return inst_pred, cate_pred
 
     def loss(self,
@@ -448,7 +455,7 @@ class SOLOAttHead(nn.Module):
                                  for ins_labels_level_img, ins_ind_labels_level_img in
                                  zip(ins_labels_level, ins_ind_labels_level)], 0)
                       for ins_labels_level, ins_ind_labels_level in zip(zip(*ins_label_list), zip(*ins_ind_label_list))]
-
+        pdb.set_trace()
         ins_ind_labels = [
             torch.cat([ins_ind_labels_level_img.flatten()
                        for ins_ind_labels_level_img in ins_ind_labels_level])
