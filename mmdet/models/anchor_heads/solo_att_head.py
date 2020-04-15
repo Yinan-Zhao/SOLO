@@ -308,7 +308,7 @@ class SOLOAttHead(nn.Module):
         bias_cate = bias_init_with_prob(0.01)
         normal_init(self.solo_cate, std=0.01, bias=bias_cate)
 
-    def get_att_single(self, scale_idx, feature_pred, idx, eval=False):
+    def get_att_single(self, scale_idx, feature_pred, idx, is_eval=False):
         device = feature_pred.device
         target_type = feature_pred.dtype
         N, c, h, w = feature_pred.shape
@@ -400,7 +400,7 @@ class SOLOAttHead(nn.Module):
                 feats[3], 
                 F.interpolate(feats[4], size=feats[3].shape[-2:], mode='bilinear'))
 
-    def forward_single(self, x, mask_feat, attention, featmap_size, idx, eval=False):
+    def forward_single(self, x, mask_feat, attention, featmap_size, idx, is_eval=False):
         cate_feat = x
         # cate branch
         for i, cate_layer in enumerate(self.cate_convs):
@@ -413,7 +413,7 @@ class SOLOAttHead(nn.Module):
 
         if attention.shape[1]:
             inst_pred = self.inst_convs(mask_feat, attention, attention.shape[1])
-            if eval:
+            if is_eval:
                 inst_pred = inst_pred.sigmoid()
             else:
                 inst_pred = F.interpolate(inst_pred, size=(featmap_size[0]*2,featmap_size[1]*2), mode='bilinear')
@@ -424,7 +424,7 @@ class SOLOAttHead(nn.Module):
             N, c, h, w = mask_feat.shape
             inst_pred = torch.zeros([N, 0, h, w], dtype=target_type, device=device)
 
-        if eval:
+        if is_eval:
             cate_pred = points_nms(cate_pred.sigmoid(), kernel=2).permute(0, 2, 3, 1)
         pdb.set_trace()
         return inst_pred, cate_pred
@@ -485,7 +485,7 @@ class SOLOAttHead(nn.Module):
                                         [j for i in range(len(ins_ind_index[j]))],
                                         [feature_pred for i in range(len(ins_ind_index[j]))],
                                         ins_ind_index[j],
-                                        eval=False)
+                                        is_eval=False)
             if len(attention_maps_scale):
                 attention_maps_scale = torch.cat(attention_maps_scale, dim=1)
             else:
@@ -502,7 +502,7 @@ class SOLOAttHead(nn.Module):
                                         attention_maps,
                                         featmap_sizes,
                                         list(range(len(self.seg_num_grids))),
-                                        eval=eval)
+                                        is_eval=False)
 
         ins_preds = []
         for inst_level in ins_preds_raw:
