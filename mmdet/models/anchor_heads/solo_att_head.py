@@ -425,7 +425,6 @@ class SOLOAttHead(nn.Module):
 
         if eval:
             cate_pred = points_nms(cate_pred.sigmoid(), kernel=2).permute(0, 2, 3, 1)
-        pdb.set_trace()
         return inst_pred, cate_pred
 
     def loss(self,
@@ -484,7 +483,7 @@ class SOLOAttHead(nn.Module):
                                         [j for i in range(len(ins_ind_index[j]))],
                                         [feature_pred for i in range(len(ins_ind_index[j]))],
                                         ins_ind_index[j],
-                                        eval=eval)
+                                        eval=False)
             if len(attention_maps_scale):
                 attention_maps_scale = torch.cat(attention_maps_scale, dim=1)
             else:
@@ -494,7 +493,6 @@ class SOLOAttHead(nn.Module):
                 attention_maps_scale = torch.zeros([N, 0, h, w], dtype=target_type, device=device)
             attention_maps.append(attention_maps_scale)
 
-        #pdb.set_trace()
 
         ins_preds_raw, cate_preds = multi_apply(self.forward_single, 
                                         new_feats, 
@@ -514,8 +512,6 @@ class SOLOAttHead(nn.Module):
                                 for ins_preds_level_img, ins_ind_labels_level_img in
                                 zip(ins_preds_level, ins_ind_labels_level)], 0)
                      for ins_preds_level, ins_ind_labels_level in zip(ins_preds, zip(*ins_ind_label_list))]'''
-        
-        #pdb.set_trace()
 
 
         
