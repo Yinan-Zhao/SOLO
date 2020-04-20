@@ -408,7 +408,6 @@ class SOLOV2Head(nn.Module):
             result = self.get_seg_single(cate_pred_list, seg_pred_list,
                                          featmap_size, img_shape, ori_shape, scale_factor, cfg, rescale)
             result_list.append(result)
-            pdb.set_trace()
         return result_list
 
     def get_seg_single(self,

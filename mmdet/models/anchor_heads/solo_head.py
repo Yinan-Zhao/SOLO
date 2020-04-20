@@ -12,6 +12,7 @@ from ..utils import bias_init_with_prob, ConvModule
 INF = 1e8
 
 from scipy import ndimage
+import pdb
 
 def points_nms(heat, kernel=2):
     # kernel must be 2
@@ -325,6 +326,7 @@ class SOLOHead(nn.Module):
             result = self.get_seg_single(cate_pred_list, seg_pred_list,
                                          featmap_size, img_shape, ori_shape, scale_factor, cfg, rescale)
             result_list.append(result)
+            pdb.set_trace()
         return result_list
 
     def get_seg_single(self,
