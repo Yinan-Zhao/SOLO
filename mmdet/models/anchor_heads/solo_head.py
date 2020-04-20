@@ -308,6 +308,9 @@ class SOLOHead(nn.Module):
         num_levels = len(cate_preds)
         featmap_size = seg_preds[0].size()[-2:]
 
+        #cate_preds[0].shape: torch.Size([1, 40, 40, 80])
+        #seg_preds[0].shape: torch.Size([1, 1600, 200, 304])
+
         result_list = []
         for img_id in range(len(img_metas)):
             cate_pred_list = [
@@ -326,7 +329,6 @@ class SOLOHead(nn.Module):
             result = self.get_seg_single(cate_pred_list, seg_pred_list,
                                          featmap_size, img_shape, ori_shape, scale_factor, cfg, rescale)
             result_list.append(result)
-            pdb.set_trace()
         return result_list
 
     def get_seg_single(self,
@@ -366,6 +368,7 @@ class SOLOHead(nn.Module):
         # masks.
         seg_preds = seg_preds[inds[:, 0]]
         seg_masks = seg_preds > cfg.mask_thr
+        pdb.set_trace()
         sum_masks = seg_masks.sum((1, 2)).float()
 
         # filter.
