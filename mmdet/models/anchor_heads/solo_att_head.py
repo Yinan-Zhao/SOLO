@@ -350,6 +350,15 @@ class SOLOAttHead(nn.Module):
         device = feature_pred.device
         target_type = feature_pred.dtype
         N, c, h, w = feature_pred.shape
+
+        attention = torch.zeros([1, 1, h, w], dtype=target_type, device=device)
+
+        return attention
+
+    '''def get_att_single(self, scale_idx, feature_pred, idx_raw, is_eval=False):
+        device = feature_pred.device
+        target_type = feature_pred.dtype
+        N, c, h, w = feature_pred.shape
         num_grid = self.seg_num_grids[scale_idx]
         att_template = self.att_pyramid[scale_idx]
         h_att, w_att = att_template.shape
@@ -396,7 +405,7 @@ class SOLOAttHead(nn.Module):
 
         attention[0,0,h_min:h_max,w_min:w_max] = att_template[h_att_min:h_att_max,w_att_min:w_att_max]
 
-        return attention
+        return attention'''
 
 
     '''def forward(self, feats, eval=False):
