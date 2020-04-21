@@ -720,7 +720,7 @@ class SOLOAttHead(nn.Module):
 
         result_list = []
         for img_id in range(len(img_metas)):
-            print('img_id: 'img_id)
+            print('img_id: '+'%s'%(img_id))
             '''cate_pred_list = [
                 cate_preds[i][img_id].view(-1, self.cate_out_channels).detach() for i in range(num_levels)
             ]'''
