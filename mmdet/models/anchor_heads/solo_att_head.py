@@ -466,6 +466,37 @@ class SOLOAttHead(nn.Module):
             cate_pred = points_nms(cate_pred.sigmoid(), kernel=2).permute(0, 2, 3, 1)
         return inst_pred, cate_pred
 
+
+    def forward_single_inst(self, mask_feat, attention, idx, is_eval=False):
+        if attention.shape[0]:
+            inst_pred = self.inst_convs(mask_feat, attention, [attention.shape[0]])
+            if is_eval:
+                inst_pred = inst_pred.sigmoid()
+
+        else:
+            device = mask_feat.device
+            target_type = mask_feat.dtype
+            N, c, h, w = mask_feat.shape
+            inst_pred = torch.zeros([0, 1, h, w], dtype=target_type, device=device)
+
+        return inst_pred
+
+
+    def forward_single_cat(self, x, idx, is_eval=False):
+        cate_feat = x
+        # cate branch
+        for i, cate_layer in enumerate(self.cate_convs):
+            if i == self.cate_down_pos:
+                seg_num_grid = self.seg_num_grids[idx]
+                cate_feat = F.interpolate(cate_feat, size=seg_num_grid, mode='bilinear')
+            cate_feat = cate_layer(cate_feat)
+
+        cate_pred = self.solo_cate(cate_feat)
+
+        if is_eval:
+            cate_pred = points_nms(cate_pred.sigmoid(), kernel=2).permute(0, 2, 3, 1)
+        return cate_pred
+
     def loss(self,
              feats,
              gt_bbox_list,
@@ -478,6 +509,7 @@ class SOLOAttHead(nn.Module):
         featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
         featmap_sizes_pred = [(featmap.size()[-2]*2, featmap.size()[-1]*2) for featmap in
                          new_feats]
+
         # ins_ind_label_list is a list with only one element
         # ins_ind_label_list[0][0]: 1600,  ins_ind_label_list[0][1]: 1296
         # cate_label_list[0][0]: 40x40,  cate_label_list[0][1]: 36x36
@@ -663,67 +695,104 @@ class SOLOAttHead(nn.Module):
             ins_ind_label_list.append(ins_ind_label)
         return ins_label_list, cate_label_list, ins_ind_label_list
 
-    def get_seg(self, seg_preds, cate_preds, img_metas, cfg, rescale=None):
-        assert len(seg_preds) == len(cate_preds)
+    def get_seg(self, feats, img_metas, cfg, rescale=None):
+        new_feats = self.split_feats(feats)
+        featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
+        #upsampled_size = (featmap_sizes[0][0] * 2, featmap_sizes[0][1] * 2)
+
+        feature_add_all_level = self.feature_convs[0](feats[0]) 
+        for i in range(1,3):
+            feature_add_all_level = feature_add_all_level + self.feature_convs[i](feats[i])
+        feature_add_all_level = feature_add_all_level + self.feature_convs[3](feats[3])
+
+        feature_pred = self.solo_mask(feature_add_all_level)  
+
+        cate_preds = multi_apply(self.forward_single_cat, 
+                                new_feats, 
+                                list(range(len(self.seg_num_grids))),
+                                is_eval=True)
+
+
+
+
         num_levels = len(cate_preds)
-        featmap_size = seg_preds[0].size()[-2:]
+        featmap_size_seg = feature_pred.size()[-2:]
 
         result_list = []
         for img_id in range(len(img_metas)):
-            cate_pred_list = [
+            '''cate_pred_list = [
                 cate_preds[i][img_id].view(-1, self.cate_out_channels).detach() for i in range(num_levels)
-            ]
-            seg_pred_list = [
-                seg_preds[i][img_id].detach() for i in range(num_levels)
-            ]
+            ]'''
+            
             img_shape = img_metas[img_id]['img_shape']
             scale_factor = img_metas[img_id]['scale_factor']
             ori_shape = img_metas[img_id]['ori_shape']
 
-            cate_pred_list = torch.cat(cate_pred_list, dim=0)
-            seg_pred_list = torch.cat(seg_pred_list, dim=0)
+            attention_maps = [] 
+            cate_scores_list = []
+            cate_labels_list = []
+            strides_list = []
 
-            result = self.get_seg_single(cate_pred_list, seg_pred_list,
-                                         featmap_size, img_shape, ori_shape, scale_factor, cfg, rescale)
+            for j in range(num_levels):
+                cate_preds_level = cate_preds[j][img_id].view(-1, self.cate_out_channels).detach()
+                inds_level = (cate_preds_level > cfg.score_thr)
+                cate_scores_level = cate_preds_level[inds_level]
+                if len(cate_scores_level) == 0:
+                    continue
+                inds_level = inds_level.nonzero()
+                cate_labels_level = inds_level[:, 1]
+
+                strides = cate_preds_level.new_ones(inds_level.shape[0])
+                strides *= self.strides[j]
+
+                attention_maps_scale = multi_apply_custom(self.get_att_single, 
+                                            [j for i in range(len(inds_level[:,0]))],
+                                            [feature_pred[None,img_id] for i in range(len(inds_level[:,0]))],
+                                            inds_level[:,0],
+                                            is_eval=True)
+                attention_maps_scale = torch.cat(attention_maps_scale, dim=0)
+
+                attention_maps.append(attention_maps_scale)
+                strides_list.append(strides)
+                cate_labels_list.append(cate_labels_level)
+                cate_scores_list.append(cate_scores_level)
+            if len(attention_maps) == 0:
+                return None
+
+            seg_pred_list = multi_apply(self.forward_single_inst, 
+                                        [feature_pred[None,img_id] for i in range(len(new_feats))],
+                                        attention_maps,
+                                        list(range(len(new_feats))),
+                                        is_eval=True)
+
+            cate_scores_list = torch.cat(cate_scores_list, dim=0)
+            cate_labels_list = torch.cat(cate_labels_list, dim=0)
+            seg_pred_list = torch.cat(seg_pred_list, dim=0)
+            strides_list = torch.cat(strides_list, dim=0)
+
+            result = self.get_seg_single(cate_scores_list, cate_labels_list, seg_pred_list, strides_list
+                                         featmap_size_seg, img_shape, ori_shape, scale_factor, cfg, rescale)
             result_list.append(result)
         return result_list
 
     def get_seg_single(self,
-                       cate_preds,
+                       cate_scores,
+                       cate_labels,
                        seg_preds,
+                       strides,
                        featmap_size,
                        img_shape,
                        ori_shape,
                        scale_factor,
                        cfg,
                        rescale=False, debug=False):
-        assert len(cate_preds) == len(seg_preds)
 
         # overall info.
         h, w, _ = img_shape
         upsampled_size_out = (featmap_size[0] * 4, featmap_size[1] * 4)
 
-        # process.
-        inds = (cate_preds > cfg.score_thr)
-        # category scores.
-        cate_scores = cate_preds[inds]
-        if len(cate_scores) == 0:
-            return None
-        # category labels.
-        inds = inds.nonzero()
-        cate_labels = inds[:, 1]
-
-        # strides.
-        size_trans = cate_labels.new_tensor(self.seg_num_grids).pow(2).cumsum(0)
-        strides = cate_scores.new_ones(size_trans[-1])
-        n_stage = len(self.seg_num_grids)
-        strides[:size_trans[0]] *= self.strides[0]
-        for ind_ in range(1, n_stage):
-            strides[size_trans[ind_ - 1]:size_trans[ind_]] *= self.strides[ind_]
-        strides = strides[inds[:, 0]]
 
         # masks.
-        seg_preds = seg_preds[inds[:, 0]]
         seg_masks = seg_preds > cfg.mask_thr
         sum_masks = seg_masks.sum((1, 2)).float()
 
