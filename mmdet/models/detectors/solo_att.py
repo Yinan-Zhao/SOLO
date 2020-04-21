@@ -1,5 +1,6 @@
 from .single_stage_ins import SingleStageInsDetector
 from ..registry import DETECTORS
+import torch
 
 
 @DETECTORS.register_module
