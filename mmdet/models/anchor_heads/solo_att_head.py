@@ -772,7 +772,8 @@ class SOLOAttHead(nn.Module):
 
             if len(attention_maps) == 0:
                 #pdb.set_trace()
-                return None
+                result_list.append(None)
+                continue
 
             seg_pred_list = multi_apply_custom(self.forward_single_inst, 
                                         [feature_pred[None,img_id] for i in range(len(new_feats))],
@@ -818,6 +819,7 @@ class SOLOAttHead(nn.Module):
         # filter.
         keep = sum_masks > strides
         if keep.sum() == 0:
+            print('return None')
             return None
 
         seg_masks = seg_masks[keep, ...]
