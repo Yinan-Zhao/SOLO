@@ -770,7 +770,7 @@ class SOLOAttHead(nn.Module):
             seg_pred_list = torch.cat(seg_pred_list, dim=0)
             strides_list = torch.cat(strides_list, dim=0)
 
-            result = self.get_seg_single(cate_scores_list, cate_labels_list, seg_pred_list, strides_list
+            result = self.get_seg_single(cate_scores_list, cate_labels_list, seg_pred_list, strides_list,
                                          featmap_size_seg, img_shape, ori_shape, scale_factor, cfg, rescale)
             result_list.append(result)
         return result_list
