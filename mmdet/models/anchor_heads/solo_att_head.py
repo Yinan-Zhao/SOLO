@@ -759,7 +759,7 @@ class SOLOAttHead(nn.Module):
             if len(attention_maps) == 0:
                 return None
 
-            seg_pred_list = multi_apply(self.forward_single_inst, 
+            seg_pred_list = multi_apply_custom(self.forward_single_inst, 
                                         [feature_pred[None,img_id] for i in range(len(new_feats))],
                                         attention_maps,
                                         list(range(len(new_feats))),
