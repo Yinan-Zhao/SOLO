@@ -346,16 +346,16 @@ class SOLOAttHead(nn.Module):
         bias_cate = bias_init_with_prob(0.01)
         normal_init(self.solo_cate, std=0.01, bias=bias_cate)
 
-    def get_att_single(self, scale_idx, feature_pred, idx_raw, is_eval=False):
+    '''def get_att_single(self, scale_idx, feature_pred, idx_raw, is_eval=False):
         device = feature_pred.device
         target_type = feature_pred.dtype
         N, c, h, w = feature_pred.shape
 
         attention = torch.ones([1, 1, h, w], dtype=target_type, device=device)
 
-        return attention
+        return attention'''
 
-    '''def get_att_single(self, scale_idx, feature_pred, idx_raw, is_eval=False):
+    def get_att_single(self, scale_idx, feature_pred, idx_raw, is_eval=False):
         device = feature_pred.device
         target_type = feature_pred.dtype
         N, c, h, w = feature_pred.shape
@@ -405,7 +405,7 @@ class SOLOAttHead(nn.Module):
 
         attention[0,0,h_min:h_max,w_min:w_max] = att_template[h_att_min:h_att_max,w_att_min:w_att_max]
 
-        return attention'''
+        return attention
 
 
     '''def forward(self, feats, eval=False):
