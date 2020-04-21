@@ -368,7 +368,7 @@ class SOLOHead(nn.Module):
         # masks.
         seg_preds = seg_preds[inds[:, 0]]
         seg_masks = seg_preds > cfg.mask_thr
-        pdb.set_trace()
+        #pdb.set_trace()
         sum_masks = seg_masks.sum((1, 2)).float()
 
         # filter.
