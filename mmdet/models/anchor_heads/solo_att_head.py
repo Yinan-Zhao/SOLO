@@ -791,6 +791,7 @@ class SOLOAttHead(nn.Module):
         h, w, _ = img_shape
         upsampled_size_out = (featmap_size[0] * 4, featmap_size[1] * 4)
 
+        seg_preds = seg_preds[:,0]
 
         # masks.
         seg_masks = seg_preds > cfg.mask_thr
