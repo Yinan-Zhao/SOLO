@@ -785,12 +785,12 @@ class SOLOAttHead(nn.Module):
             cate_labels_list = torch.cat(cate_labels_list, dim=0)
             seg_pred_list = torch.cat(seg_pred_list, dim=0)
             strides_list = torch.cat(strides_list, dim=0)
+            attention_maps_list = torch.cat(attention_maps, dim=0)
 
             #print(seg_pred_list.shape[0])
             pdb.set_trace()
 
-            result = self.get_seg_single(cate_scores_list, cate_labels_list, seg_pred_list, strides_list,
-                                         featmap_size_seg, img_shape, ori_shape, scale_factor, cfg, rescale)
+            result = self.get_seg_single(cate_scores_list, cate_labels_list, seg_pred_list, attention_maps_list,strides_list, featmap_size_seg, img_shape, ori_shape, scale_factor, cfg, rescale)
             result_list.append(result)
         return result_list
 
@@ -798,6 +798,7 @@ class SOLOAttHead(nn.Module):
                        cate_scores,
                        cate_labels,
                        seg_preds,
+                       attention_maps,
                        strides,
                        featmap_size,
                        img_shape,
@@ -811,6 +812,7 @@ class SOLOAttHead(nn.Module):
         upsampled_size_out = (featmap_size[0] * 4, featmap_size[1] * 4)
 
         seg_preds = seg_preds[:,0]
+        attention_maps = attention_maps[:,0]
 
         # masks.
         seg_masks = seg_preds > cfg.mask_thr
@@ -824,6 +826,7 @@ class SOLOAttHead(nn.Module):
 
         seg_masks = seg_masks[keep, ...]
         seg_preds = seg_preds[keep, ...]
+        attention_maps = attention_maps[keep, ...]
         sum_masks = sum_masks[keep]
         cate_scores = cate_scores[keep]
         cate_labels = cate_labels[keep]
@@ -838,6 +841,7 @@ class SOLOAttHead(nn.Module):
             sort_inds = sort_inds[:cfg.nms_pre]
         seg_masks = seg_masks[sort_inds, :, :]
         seg_preds = seg_preds[sort_inds, :, :]
+        attention_maps = attention_maps[sort_inds, ...]
         sum_masks = sum_masks[sort_inds]
         cate_scores = cate_scores[sort_inds]
         cate_labels = cate_labels[sort_inds]
@@ -851,6 +855,7 @@ class SOLOAttHead(nn.Module):
         if keep.sum() == 0:
             return None
         seg_preds = seg_preds[keep, :, :]
+        attention_maps = attention_maps[keep, ...]
         cate_scores = cate_scores[keep]
         cate_labels = cate_labels[keep]
 
@@ -859,6 +864,7 @@ class SOLOAttHead(nn.Module):
         if len(sort_inds) > cfg.max_per_img:
             sort_inds = sort_inds[:cfg.max_per_img]
         seg_preds = seg_preds[sort_inds, :, :]
+        attention_maps = attention_maps[sort_inds, ...]
         cate_scores = cate_scores[sort_inds]
         cate_labels = cate_labels[sort_inds]
 
@@ -869,5 +875,14 @@ class SOLOAttHead(nn.Module):
                                   size=ori_shape[:2],
                                   mode='bilinear').squeeze(0)
         seg_masks = seg_masks > cfg.mask_thr
-        return seg_masks, cate_labels, cate_scores
+
+        attention_maps = F.interpolate(attention_maps.unsqueeze(0),
+                                  size=upsampled_size_out,
+                                  mode='bilinear')[:, :, :h, :w]
+        attention_masks = F.interpolate(attention_maps,
+                                  size=ori_shape[:2],
+                                  mode='bilinear').squeeze(0)
+        attention_masks = attention_masks > 0
+        #return seg_masks, cate_labels, cate_scores
+        return attention_masks, cate_labels, cate_scores
         
