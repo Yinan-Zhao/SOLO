@@ -351,7 +351,7 @@ class SOLOAttHead(nn.Module):
         target_type = feature_pred.dtype
         N, c, h, w = feature_pred.shape
 
-        attention = torch.zeros([1, 1, h, w], dtype=target_type, device=device)
+        attention = torch.ones([1, 1, h, w], dtype=target_type, device=device)
 
         return attention
 
@@ -819,7 +819,6 @@ class SOLOAttHead(nn.Module):
         # filter.
         keep = sum_masks > strides
         if keep.sum() == 0:
-            print('return None')
             return None
 
         seg_masks = seg_masks[keep, ...]
