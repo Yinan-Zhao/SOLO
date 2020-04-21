@@ -707,7 +707,7 @@ class SOLOAttHead(nn.Module):
 
         feature_pred = self.solo_mask(feature_add_all_level)  
 
-        cate_preds = multi_apply(self.forward_single_cat, 
+        cate_preds = multi_apply_custom(self.forward_single_cat, 
                                 new_feats, 
                                 list(range(len(self.seg_num_grids))),
                                 is_eval=True)
