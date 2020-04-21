@@ -728,7 +728,7 @@ class SOLOAttHead(nn.Module):
             scale_factor = img_metas[img_id]['scale_factor']
             ori_shape = img_metas[img_id]['ori_shape']
 
-            print(img_metas)
+            print(img_metas[img_id]['filename'])
 
             attention_maps = [] 
             cate_scores_list = []
