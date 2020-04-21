@@ -787,6 +787,7 @@ class SOLOAttHead(nn.Module):
             strides_list = torch.cat(strides_list, dim=0)
 
             #print(seg_pred_list.shape[0])
+            pdb.set_trace()
 
             result = self.get_seg_single(cate_scores_list, cate_labels_list, seg_pred_list, strides_list,
                                          featmap_size_seg, img_shape, ori_shape, scale_factor, cfg, rescale)
