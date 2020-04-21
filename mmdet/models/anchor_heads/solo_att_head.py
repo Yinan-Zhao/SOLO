@@ -757,6 +757,7 @@ class SOLOAttHead(nn.Module):
                 cate_labels_list.append(cate_labels_level)
                 cate_scores_list.append(cate_scores_level)
             if len(attention_maps) == 0:
+                pdb.set_trace()
                 return None
 
             seg_pred_list = multi_apply_custom(self.forward_single_inst, 
