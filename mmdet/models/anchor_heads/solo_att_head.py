@@ -719,8 +719,7 @@ class SOLOAttHead(nn.Module):
         featmap_size_seg = feature_pred.size()[-2:]
 
         result_list = []
-        for img_id in range(len(img_metas)):
-            print('img_id: '+'%s'%(img_id))
+        for img_id in range(len(img_metas)):            
             '''cate_pred_list = [
                 cate_preds[i][img_id].view(-1, self.cate_out_channels).detach() for i in range(num_levels)
             ]'''
@@ -728,6 +727,8 @@ class SOLOAttHead(nn.Module):
             img_shape = img_metas[img_id]['img_shape']
             scale_factor = img_metas[img_id]['scale_factor']
             ori_shape = img_metas[img_id]['ori_shape']
+
+            print(img_metas)
 
             attention_maps = [] 
             cate_scores_list = []
@@ -759,7 +760,7 @@ class SOLOAttHead(nn.Module):
                 cate_labels_list.append(cate_labels_level)
                 cate_scores_list.append(cate_scores_level)
             if len(attention_maps) == 0:
-                pdb.set_trace()
+                #pdb.set_trace()
                 return None
 
             seg_pred_list = multi_apply_custom(self.forward_single_inst, 
