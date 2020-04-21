@@ -797,7 +797,6 @@ class SOLOAttHead(nn.Module):
         seg_masks = seg_preds > cfg.mask_thr
         sum_masks = seg_masks.sum((1, 2)).float()
 
-        pdb.set_trace()
 
         # filter.
         keep = sum_masks > strides
