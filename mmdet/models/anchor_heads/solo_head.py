@@ -356,6 +356,8 @@ class SOLOHead(nn.Module):
         inds = inds.nonzero()
         cate_labels = inds[:, 1]
 
+        print(inds.shape[0])
+
         # strides.
         size_trans = cate_labels.new_tensor(self.seg_num_grids).pow(2).cumsum(0)
         strides = cate_scores.new_ones(size_trans[-1])

@@ -760,6 +760,7 @@ class SOLOAttHead(nn.Module):
                 strides_list.append(strides)
                 cate_labels_list.append(cate_labels_level)
                 cate_scores_list.append(cate_scores_level)
+
             if len(attention_maps) == 0:
                 #pdb.set_trace()
                 return None
@@ -774,6 +775,8 @@ class SOLOAttHead(nn.Module):
             cate_labels_list = torch.cat(cate_labels_list, dim=0)
             seg_pred_list = torch.cat(seg_pred_list, dim=0)
             strides_list = torch.cat(strides_list, dim=0)
+
+            print(seg_pred_list.shape[0])
 
             result = self.get_seg_single(cate_scores_list, cate_labels_list, seg_pred_list, strides_list,
                                          featmap_size_seg, img_shape, ori_shape, scale_factor, cfg, rescale)
