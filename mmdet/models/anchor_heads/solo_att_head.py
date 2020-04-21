@@ -737,6 +737,7 @@ class SOLOAttHead(nn.Module):
                 cate_preds_level = cate_preds[j][img_id].view(-1, self.cate_out_channels).detach()
                 inds_level = (cate_preds_level > cfg.score_thr)
                 cate_scores_level = cate_preds_level[inds_level]
+                print(len(cate_scores_level))
                 if len(cate_scores_level) == 0:
                     continue
                 inds_level = inds_level.nonzero()
