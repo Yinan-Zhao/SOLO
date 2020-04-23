@@ -566,7 +566,7 @@ class SOLOAttHead(nn.Module):
 
 
         for j in range(len(self.seg_num_grids)):
-            (attention_maps_scale) = multi_apply(self.get_att_single, 
+            attention_maps_scale, = multi_apply(self.get_att_single, 
                                         [j for i in range(len(ins_ind_index[j]))],
                                         [feature_pred for i in range(len(ins_ind_index[j]))],
                                         ins_ind_index[j],
