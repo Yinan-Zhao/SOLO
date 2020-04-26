@@ -21,10 +21,6 @@ INF = 1e8
 
 from scipy import ndimage
 
-def multi_apply_custom(func, *args, **kwargs):
-    pfunc = partial(func, **kwargs) if kwargs else func
-    map_results = map(pfunc, *args)
-    return list(map_results)
 
 def points_nms(heat, kernel=2):
     # kernel must be 2
@@ -554,6 +550,7 @@ class SOLOAttHead(nn.Module):
         for i in range(len(ins_ind_labels)):
             ins_ind_index.append(torch.nonzero(ins_ind_labels[i])[:,0])
         
+        pdb.set_trace()
 
 
         feature_add_all_level = self.feature_convs[0](feats[0]) 
@@ -571,7 +568,6 @@ class SOLOAttHead(nn.Module):
                                         [feature_pred for i in range(len(ins_ind_index[j]))],
                                         ins_ind_index[j],
                                         is_eval=False)
-            pdb.set_trace()
             if len(attention_maps_scale):
                 attention_maps_scale = torch.cat(attention_maps_scale, dim=0)
             else:
@@ -717,7 +713,7 @@ class SOLOAttHead(nn.Module):
 
         feature_pred = self.solo_mask(feature_add_all_level)  
 
-        cate_preds = multi_apply_custom(self.forward_single_cat, 
+        cate_preds, = multi_apply(self.forward_single_cat, 
                                 new_feats, 
                                 list(range(len(self.seg_num_grids))),
                                 is_eval=True)
@@ -759,7 +755,7 @@ class SOLOAttHead(nn.Module):
                 strides = cate_preds_level.new_ones(inds_level.shape[0])
                 strides *= self.strides[j]
 
-                attention_maps_scale = multi_apply_custom(self.get_att_single, 
+                attention_maps_scale, = multi_apply(self.get_att_single, 
                                             [j for i in range(len(inds_level[:,0]))],
                                             [feature_pred[None,img_id] for i in range(len(inds_level[:,0]))],
                                             inds_level[:,0],
@@ -776,7 +772,7 @@ class SOLOAttHead(nn.Module):
                 result_list.append(None)
                 continue
 
-            seg_pred_list = multi_apply_custom(self.forward_single_inst, 
+            seg_pred_list, = multi_apply(self.forward_single_inst, 
                                         [feature_pred[None,img_id] for i in range(len(new_feats))],
                                         attention_maps,
                                         list(range(len(new_feats))),

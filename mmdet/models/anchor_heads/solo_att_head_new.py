@@ -21,10 +21,78 @@ INF = 1e8
 
 from scipy import ndimage
 
-def multi_apply_custom(func, *args, **kwargs):
-    pfunc = partial(func, **kwargs) if kwargs else func
-    map_results = map(pfunc, *args)
-    return list(map_results)
+def _neg_loss(pred, gt):
+    ''' Modified focal loss. Exactly the same as CornerNet.
+      Runs faster and costs a little bit more memory
+    Arguments:
+      pred (batch x c x h x w)
+      gt_regr (batch x c x h x w)
+    '''
+    pos_inds = gt.eq(1).float()
+    neg_inds = gt.lt(1).float()
+
+    neg_weights = torch.pow(1 - gt, 4)
+
+    loss = 0
+
+    pos_loss = torch.log(pred) * torch.pow(1 - pred, 2) * pos_inds
+    neg_loss = torch.log(1 - pred) * torch.pow(pred, 2) * neg_weights * neg_inds
+
+    num_pos  = pos_inds.float().sum()
+    pos_loss = pos_loss.sum()
+    neg_loss = neg_loss.sum()
+
+    if num_pos == 0:
+        loss = loss - neg_loss
+    else:
+        loss = loss - (pos_loss + neg_loss) / num_pos
+    return loss
+
+class CenterFocalLoss(nn.Module):
+    '''nn.Module warpper for focal loss'''
+    def __init__(self):
+        super(CenterFocalLoss, self).__init__()
+        self.neg_loss = _neg_loss
+
+    def forward(self, out, target):
+        return self.neg_loss(out, target)
+
+
+def _gather_feat(feat, ind, mask=None):
+    dim  = feat.size(2)
+    ind  = ind.unsqueeze(2).expand(ind.size(0), ind.size(1), dim)
+    feat = feat.gather(1, ind)
+    if mask is not None:
+        mask = mask.unsqueeze(2).expand_as(feat)
+        feat = feat[mask]
+        feat = feat.view(-1, dim)
+    return feat
+
+def _transpose_and_gather_feat(feat, ind):
+    feat = feat.permute(0, 2, 3, 1).contiguous()
+    feat = feat.view(feat.size(0), -1, feat.size(3))
+    feat = _gather_feat(feat, ind)
+    return feat
+
+class RegL1Loss(nn.Module):
+    def __init__(self):
+        super(RegL1Loss, self).__init__()
+  
+    def forward(self, output, mask, ind, target):
+        pred = _transpose_and_gather_feat(output, ind)
+        mask = mask.unsqueeze(2).expand_as(pred).float()
+        # loss = F.l1_loss(pred * mask, target * mask, reduction='elementwise_mean')
+        loss = F.l1_loss(pred * mask, target * mask, size_average=False)
+        loss = loss / (mask.sum() + 1e-4)
+        return loss
+
+class Scale(nn.Module):
+    def __init__(self, init_value=1.0):
+        super(Scale, self).__init__()
+        self.scale = nn.Parameter(torch.FloatTensor([init_value]))
+
+    def forward(self, input):
+        return input * self.scale
 
 def points_nms(heat, kernel=2):
     # kernel must be 2
@@ -258,6 +326,8 @@ class SOLOAttHead(nn.Module):
         self.solo_mask = ConvModule(
             self.seg_feat_channels, self.seg_feat_channels, 1, padding=0, norm_cfg=norm_cfg, bias=norm_cfg is None)
 
+        self.scales = nn.ModuleList([Scale(init_value=1.0) for _ in range(self.strides)])
+
  
     def init_weights(self):
         #TODO: init for feat_conv
@@ -342,13 +412,6 @@ class SOLOAttHead(nn.Module):
 
         return attention
 
-    def split_feats(self, feats):
-        return (F.interpolate(feats[0], scale_factor=0.5, mode='bilinear'), 
-                feats[1], 
-                feats[2], 
-                feats[3], 
-                F.interpolate(feats[4], size=feats[3].shape[-2:], mode='bilinear'))
-
 
     def forward_mask_feat(self, feats):
         feature_add_all_level = self.feature_convs[0](feats[0]) 
@@ -382,6 +445,7 @@ class SOLOAttHead(nn.Module):
         size_feat = x
         for i, size_layer in enumerate(self.size_convs):
             size_feat = size_layer(size_feat)
+        size_feat = F.relu(self.scales[idx](size_feat))
 
         # offset head
         offset_feat = x
@@ -405,7 +469,7 @@ class SOLOAttHead(nn.Module):
              img_metas,
              cfg,
              gt_bboxes_ignore=None):
-        new_feats = self.split_feats(feats)
+        new_feats = feats
         featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
         featmap_sizes_pred = [(featmap.size()[-2]*2, featmap.size()[-1]*2) for featmap in
                          new_feats]
@@ -459,7 +523,7 @@ class SOLOAttHead(nn.Module):
         attention_maps = [] 
 
         for j in range(len(self.seg_num_grids)):
-            attention_maps_scale = multi_apply_custom(self.get_att_single, 
+            attention_maps_scale, = multi_apply(self.get_att_single, 
                                         [j for i in range(len(ins_ind_index[j]))],
                                         [feature_pred for i in range(len(ins_ind_index[j]))],
                                         ins_ind_index[j],
@@ -474,7 +538,7 @@ class SOLOAttHead(nn.Module):
 
 
 
-        ins_preds_raw = multi_apply(self.forward_single_inst,  
+        ins_preds_raw, = multi_apply(self.forward_single_inst,  
                                         [feature_pred for i in range(len(new_feats))],
                                         attention_maps,
                                         ins_ind_count_img,
@@ -607,7 +671,7 @@ class SOLOAttHead(nn.Module):
 
         feature_pred = self.solo_mask(feature_add_all_level)  
 
-        cate_preds = multi_apply_custom(self.forward_single_cat, 
+        cate_preds, = multi_apply(self.forward_single_cat, 
                                 new_feats, 
                                 list(range(len(self.seg_num_grids))),
                                 is_eval=True)
@@ -649,7 +713,7 @@ class SOLOAttHead(nn.Module):
                 strides = cate_preds_level.new_ones(inds_level.shape[0])
                 strides *= self.strides[j]
 
-                attention_maps_scale = multi_apply_custom(self.get_att_single, 
+                attention_maps_scale, = multi_apply(self.get_att_single, 
                                             [j for i in range(len(inds_level[:,0]))],
                                             [feature_pred[None,img_id] for i in range(len(inds_level[:,0]))],
                                             inds_level[:,0],
@@ -666,7 +730,7 @@ class SOLOAttHead(nn.Module):
                 result_list.append(None)
                 continue
 
-            seg_pred_list = multi_apply_custom(self.forward_single_inst, 
+            seg_pred_list, = multi_apply(self.forward_single_inst, 
                                         [feature_pred[None,img_id] for i in range(len(new_feats))],
                                         attention_maps,
                                         list(range(len(new_feats))),
