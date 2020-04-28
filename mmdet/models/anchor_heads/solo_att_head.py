@@ -432,6 +432,8 @@ class SOLOAttHead(nn.Module):
         target_type = feature_pred.dtype
         N, c, h, w = feature_pred.shape
 
+        attention = torch.zeros([1, 1, h, w], dtype=target_type, device=device)
+
         att_stride = 4.
 
         idx = position_idx % (featmap_size[0]*featmap_size[1])
@@ -445,6 +447,9 @@ class SOLOAttHead(nn.Module):
         bbox_w_att = int(bbox_w/att_stride)
         bbox_h_att = int(bbox_h/att_stride)
 
+        if bbox_w_att<=0 or bbox_h_att<=0:
+            return attention
+
         localmask = F.interpolate(localmask, size=(bbox_h_att, bbox_w_att), mode='bilinear', align_corners=True)
 
         center_w_att = int((idx_w*stride+offset_w)/att_stride)
@@ -454,8 +459,6 @@ class SOLOAttHead(nn.Module):
         h_min_raw = center_h_att - int(bbox_h/att_stride/2.)
         w_max_raw = w_min_raw + bbox_w_att
         h_max_raw = h_min_raw + bbox_h_att
-
-        attention = torch.zeros([1, 1, h, w], dtype=target_type, device=device)
 
         if w_min_raw < 0:
             w_min = 0
