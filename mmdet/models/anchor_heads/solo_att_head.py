@@ -492,7 +492,7 @@ class SOLOAttHead(nn.Module):
 
         attention[0,0,h_min:h_max,w_min:w_max] = localmask[0,0,h_local_min:h_local_max,w_local_min:w_local_max]
 
-        return (attention, [])
+        return attention, attention
 
 
     def forward_mask_feat(self, feats):
