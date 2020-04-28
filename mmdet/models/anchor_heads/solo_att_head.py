@@ -681,6 +681,7 @@ class SOLOAttHead(nn.Module):
         ]
         flatten_cate_preds = torch.cat(cate_preds)
 
+        pdb.set_trace()
         cate_labels = [
             cate_label.permute(0, 2, 3, 1).reshape(-1, self.cate_out_channels)
             for cate_label in cate_label_list
