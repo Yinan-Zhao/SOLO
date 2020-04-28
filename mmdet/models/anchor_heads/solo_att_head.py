@@ -552,6 +552,7 @@ class SOLOAttHead(nn.Module):
              img_metas,
              cfg,
              gt_bboxes_ignore=None):
+        pdb.set_trace()
         new_feats = feats
         featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
 
