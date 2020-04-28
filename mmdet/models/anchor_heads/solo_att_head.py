@@ -804,6 +804,7 @@ class SOLOAttHead(nn.Module):
             ins_ind_index_list.append(ins_ind_index)
             offset_list.append(torch.stack(offsets, dim=0))
             size_list.append(torch.stack(sizes, dim=0))
+            pdb.set_trace()
             attention_list.append(torch.stack(attentions, dim=0))
         return ins_label_list, cate_label_list, ins_ind_index_list, offset_list, size_list, attention_list
 
