@@ -619,6 +619,7 @@ class SOLOAttHead(nn.Module):
                                         ins_img_index[j],
                                         ins_ind_index[j],
                                         is_eval=False)
+            pdb.set_trace()
             if len(attention_maps_scale):
                 attention_maps_scale = torch.cat(attention_maps_scale, dim=0)
             else:
@@ -626,7 +627,6 @@ class SOLOAttHead(nn.Module):
                                                 [0,1,feature_pred.shape[-2],feature_pred.shape[-1]])
             attention_maps.append(attention_maps_scale)
 
-        pdb.set_trace()
 
         ins_preds_raw, = multi_apply(self.forward_single_inst,  
                                         [feature_pred for i in range(len(new_feats))],
