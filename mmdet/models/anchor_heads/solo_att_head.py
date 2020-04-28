@@ -599,7 +599,7 @@ class SOLOAttHead(nn.Module):
         for j in range(len(self.strides)):
             attention_maps_scale, = multi_apply(self.get_att_single, 
                                         [featmap_sizes[j] for i in range(len(ins_ind_index[j]))],
-                                        [self.strides[j] for i in range(len(ins_ind_index[j]))]
+                                        [self.strides[j] for i in range(len(ins_ind_index[j]))],
                                         [feature_pred for i in range(len(ins_ind_index[j]))],
                                         [size_preds[j] for i in range(len(ins_ind_index[j]))],
                                         [offset_preds[j] for i in range(len(ins_ind_index[j]))],
