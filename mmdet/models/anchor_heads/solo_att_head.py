@@ -609,6 +609,7 @@ class SOLOAttHead(nn.Module):
         attention_maps = [] 
 
         for j in range(len(self.strides)):
+            pdb.set_trace()
             attention_maps_scale, = multi_apply(self.get_att_single, 
                                         [featmap_sizes[j] for i in range(len(ins_ind_index[j]))],
                                         [self.strides[j] for i in range(len(ins_ind_index[j]))],
@@ -619,7 +620,6 @@ class SOLOAttHead(nn.Module):
                                         ins_img_index[j],
                                         ins_ind_index[j],
                                         is_eval=False)
-            pdb.set_trace()
             if len(attention_maps_scale):
                 attention_maps_scale = torch.cat(attention_maps_scale, dim=0)
             else:
