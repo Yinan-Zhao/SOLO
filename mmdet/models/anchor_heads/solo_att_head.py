@@ -491,6 +491,7 @@ class SOLOAttHead(nn.Module):
             return attention
 
         attention[0,0,h_min:h_max,w_min:w_max] = localmask[0,0,h_local_min:h_local_max,w_local_min:w_local_max]
+        pdb.set_trace()
 
         return attention
 
