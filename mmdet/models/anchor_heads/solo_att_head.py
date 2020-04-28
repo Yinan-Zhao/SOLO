@@ -514,7 +514,7 @@ class SOLOAttHead(nn.Module):
         else:
             inst_pred = self.create_zeros_as(mask_feat, [0,1,mask_feat[-2],mask_feat[-1]])
 
-        return inst_pred
+        return inst_pred,
 
 
     def forward_single_cat(self, x, idx, is_eval=False):
@@ -620,10 +620,8 @@ class SOLOAttHead(nn.Module):
                                         ins_ind_index[j],
                                         is_eval=False)
 
-            pdb.set_trace()
             if len(attention_maps_scale):
                 attention_maps_scale = torch.cat(attention_maps_scale, dim=0)
-                attention_maps_scale = attention_maps_scale.unsqueeze(1)
             else:
                 attention_maps_scale = self.create_zeros_as(feature_pred, 
                                                 [0,1,feature_pred.shape[-2],feature_pred.shape[-1]])
