@@ -658,7 +658,7 @@ class SOLOAttHead(nn.Module):
         for level_idx in range(len(ins_ind_index_list[0])):
             tmp = []
             for img_idx in range(len(ins_ind_index_list)):
-                indices = torch.tensor(ins_ind_index_list[img_idx][level_idx], dtype=torch.LongTensor, device=localmask_preds[0].device)
+                indices = torch.tensor(ins_ind_index_list[img_idx][level_idx], dtype=torch.int64, device=localmask_preds[0].device)
                 tmp.append(torch.index_select(localmask_preds[level_idx][img_idx], 0, indices))
             tmp = torch.cat(tmp)
             localmask_preds_select.append(tmp.reshape(tmp.shape[0], self.attention_size, self.attention_size))
@@ -700,7 +700,7 @@ class SOLOAttHead(nn.Module):
         size_preds_select = []
         for img_idx, ins_index_img in enumerate(ins_ind_index_list):
             for level_idx, ins_index_img_level in enumerate(ins_index_img):
-                indices = torch.tensor(ins_index_img_level, dtype=torch.LongTensor, device=offset_preds[0].device)
+                indices = torch.tensor(ins_index_img_level, dtype=torch.int64, device=offset_preds[0].device)
                 offset_preds_select.append(torch.index_select(offset_preds[level_idx][img_idx], 0, indices))
                 size_preds_select.append(torch.index_select(size_preds[level_idx][img_idx], 0, indices))
         offset_preds_select = torch.cat(offset_preds_select)
