@@ -428,6 +428,7 @@ class SOLOAttHead(nn.Module):
         return y
 
     def get_att_single(self, featmap_size, stride, feature_pred, size_pred, offset_pred, localmask_pred, img_idx, position_idx, is_eval=False):
+        pdb.set_trace()
         device = feature_pred.device
         target_type = feature_pred.dtype
         N, c, h, w = feature_pred.shape
