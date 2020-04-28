@@ -619,6 +619,7 @@ class SOLOAttHead(nn.Module):
                                         ins_img_index[j],
                                         ins_ind_index[j],
                                         is_eval=False)
+            pdb.set_trace()
             if len(attention_maps_scale):
                 attention_maps_scale = torch.cat(attention_maps_scale, dim=0)
                 attention_maps_scale = attention_maps_scale.unsqueeze(1)
