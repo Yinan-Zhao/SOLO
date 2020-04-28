@@ -492,7 +492,7 @@ class SOLOAttHead(nn.Module):
 
         attention[0,0,h_min:h_max,w_min:w_max] = localmask[0,0,h_local_min:h_local_max,w_local_min:w_local_max]
 
-        return attention,
+        return attention, _
 
 
     def forward_mask_feat(self, feats):
@@ -514,7 +514,7 @@ class SOLOAttHead(nn.Module):
         else:
             inst_pred = self.create_zeros_as(mask_feat, [0,1,mask_feat[-2],mask_feat[-1]])
 
-        return inst_pred,
+        return inst_pred, _
 
 
     def forward_single_cat(self, x, idx, is_eval=False):
@@ -609,7 +609,7 @@ class SOLOAttHead(nn.Module):
         attention_maps = [] 
 
         for j in range(len(self.strides)):
-            attention_maps_scale, = multi_apply(self.get_att_single, 
+            attention_maps_scale, _ = multi_apply(self.get_att_single, 
                                         [featmap_sizes[j] for i in range(len(ins_ind_index[j]))],
                                         [self.strides[j] for i in range(len(ins_ind_index[j]))],
                                         [feature_pred for i in range(len(ins_ind_index[j]))],
@@ -629,7 +629,7 @@ class SOLOAttHead(nn.Module):
             attention_maps.append(attention_maps_scale)
 
 
-        ins_preds_raw, = multi_apply(self.forward_single_inst,  
+        ins_preds_raw, _ = multi_apply(self.forward_single_inst,  
                                         [feature_pred for i in range(len(new_feats))],
                                         attention_maps,
                                         ins_ind_count_img,
