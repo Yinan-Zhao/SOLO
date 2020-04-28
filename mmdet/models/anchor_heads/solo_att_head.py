@@ -589,9 +589,9 @@ class SOLOAttHead(nn.Module):
         ins_img_index = []
         for ins_ind_count_level in ins_ind_count_img:
             tmp = []
-            for p, count in enumerate(ins_ind_count_level):
+            for p_idx, count in enumerate(ins_ind_count_level):
                 pdb.set_trace()
-                tmp += p*np.ones(count).astype(np.int32)
+                tmp += p_idx*np.ones(count).astype(np.int32)
             ins_img_index.append(tmp)
         
 
