@@ -609,23 +609,21 @@ class SOLOAttHead(nn.Module):
         attention_maps = [] 
 
         for j in range(len(self.strides)):
-            #pdb.set_trace()
-            print(ins_img_index[j])
-            attention_maps_scale, = multi_apply(self.get_att_single, 
-                                        [featmap_sizes[j] for i in range(len(ins_ind_index[j]))],
-                                        [self.strides[j] for i in range(len(ins_ind_index[j]))],
-                                        [feature_pred for i in range(len(ins_ind_index[j]))],
-                                        [size_preds[j] for i in range(len(ins_ind_index[j]))],
-                                        [offset_preds[j] for i in range(len(ins_ind_index[j]))],
-                                        [localmask_preds[j] for i in range(len(ins_ind_index[j]))],
-                                        ins_img_index[j],
-                                        ins_ind_index[j],
-                                        is_eval=False)
-            if len(attention_maps_scale):
+            if len(ins_img_index[j]):
+                attention_maps_scale, = multi_apply(self.get_att_single, 
+                                            [featmap_sizes[j] for i in range(len(ins_ind_index[j]))],
+                                            [self.strides[j] for i in range(len(ins_ind_index[j]))],
+                                            [feature_pred for i in range(len(ins_ind_index[j]))],
+                                            [size_preds[j] for i in range(len(ins_ind_index[j]))],
+                                            [offset_preds[j] for i in range(len(ins_ind_index[j]))],
+                                            [localmask_preds[j] for i in range(len(ins_ind_index[j]))],
+                                            ins_img_index[j],
+                                            ins_ind_index[j],
+                                            is_eval=False)
                 attention_maps_scale = torch.cat(attention_maps_scale, dim=0)
             else:
                 attention_maps_scale = self.create_zeros_as(feature_pred, 
-                                                [0,1,feature_pred.shape[-2],feature_pred.shape[-1]])
+                                                [0,1,feature_pred.shape[-2],feature_pred.shape[-1]])               
             attention_maps.append(attention_maps_scale)
 
 
