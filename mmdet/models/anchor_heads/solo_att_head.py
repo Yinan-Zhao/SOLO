@@ -410,7 +410,7 @@ class SOLOAttHead(nn.Module):
         for m in self.localmask_convs:
             normal_init(m.conv, std=0.01)  
 
-        normal_init(self.solo_mask, std=0.01)
+        normal_init(self.solo_mask.conv, std=0.01)
         self.inst_convs.init_weights()
 
     def create_zeros_as(self, x, shape):
