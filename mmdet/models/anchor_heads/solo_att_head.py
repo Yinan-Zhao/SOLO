@@ -448,6 +448,7 @@ class SOLOAttHead(nn.Module):
         bbox_h_att = int(bbox_h/att_stride)
 
         if bbox_w_att<=0 or bbox_h_att<=0:
+            print(attention.shape)
             return attention
 
         localmask = F.interpolate(localmask, size=(bbox_h_att, bbox_w_att), mode='bilinear', align_corners=True)
@@ -473,6 +474,7 @@ class SOLOAttHead(nn.Module):
             w_max = w_max_raw
             w_local_max = bbox_w_att
         if (w_local_min>=bbox_w_att-1) or (w_local_max<=0) or (w_local_max<=w_local_min):
+            print(attention.shape)
             return attention
 
         if h_min_raw < 0:
@@ -488,10 +490,12 @@ class SOLOAttHead(nn.Module):
             h_max = h_max_raw
             h_local_max = bbox_h_att
         if (h_local_min>=bbox_h_att-1) or (h_local_max<=0) or (h_local_max<=h_local_min):
+            print(attention.shape)
             return attention
 
         attention[0,0,h_min:h_max,w_min:w_max] = localmask[0,0,h_local_min:h_local_max,w_local_min:w_local_max]
 
+        print(attention.shape)
         return attention, attention
 
 
