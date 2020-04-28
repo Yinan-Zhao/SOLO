@@ -384,8 +384,8 @@ class SOLOAttHead(nn.Module):
         self.solo_mask = ConvModule(
             self.seg_feat_channels, self.seg_feat_channels, 1, padding=0, norm_cfg=norm_cfg, bias=norm_cfg is None)
 
-        self.size_scales = nn.ModuleList([Scale(init_value=1.0) for _ in range(self.strides)])
-        self.offset_scales = nn.ModuleList([Scale(init_value=1.0) for _ in range(self.strides)])
+        self.size_scales = nn.ModuleList([Scale(init_value=1.0) for _ in range(len(self.strides))])
+        self.offset_scales = nn.ModuleList([Scale(init_value=1.0) for _ in range(len(self.strides))])
 
  
     def init_weights(self):
