@@ -768,6 +768,8 @@ class SOLOAttHead(nn.Module):
                 w = w_raw/stride
                 h = h_raw/stride
 
+                pdb.set_trace()
+
                 radius = gaussian_radius((math.ceil(h), math.ceil(w)))
                 radius = max(0, int(radius))
 
