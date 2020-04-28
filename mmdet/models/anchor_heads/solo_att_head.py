@@ -492,7 +492,7 @@ class SOLOAttHead(nn.Module):
 
         attention[0,0,h_min:h_max,w_min:w_max] = localmask[0,0,h_local_min:h_local_max,w_local_min:w_local_max]
 
-        return attention, _
+        return attention, None
 
 
     def forward_mask_feat(self, feats):
@@ -514,7 +514,7 @@ class SOLOAttHead(nn.Module):
         else:
             inst_pred = self.create_zeros_as(mask_feat, [0,1,mask_feat[-2],mask_feat[-1]])
 
-        return inst_pred, _
+        return inst_pred, None
 
 
     def forward_single_cat(self, x, idx, is_eval=False):
