@@ -787,7 +787,9 @@ class SOLOAttHead(nn.Module):
                 radius = gaussian_radius((math.ceil(h), math.ceil(w)))
                 radius = max(0, int(radius))
 
-                draw_umich_gaussian(cate_label[gt_label], ct_int, radius)
+                if gt_label-1 < 0:
+                    raise Exception('gt_label is negative!')
+                draw_umich_gaussian(cate_label[gt_label-1], ct_int, radius)
 
                 ins_ind_index.append(ct_int[1]*featmap_size[1]+ct_int[0])
                 offsets.append(torch.tensor(offset_gt, dtype=torch.float32, device=device))
