@@ -792,7 +792,7 @@ class SOLOAttHead(nn.Module):
                 seg_mask_resize = torch.Tensor(seg_mask_resize)
                 ins_label.append(seg_mask_resize)
 
-                attention_raw = seg_mask[gt_bbox[1]:gt_bbox[3], gt_bbox[0]: gt_bbox[2]]
+                attention_raw = seg_mask[int(gt_bbox[1]):int(gt_bbox[3]), int(gt_bbox[0]): int(gt_bbox[2])]
                 attention = mmcv.imrescale(attention_raw, (self.attention_size, self.attention_size))
                 attention = torch.Tensor(attention)
                 attentions.append(attention)
