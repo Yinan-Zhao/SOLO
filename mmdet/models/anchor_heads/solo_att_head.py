@@ -448,8 +448,7 @@ class SOLOAttHead(nn.Module):
         bbox_h_att = int(bbox_h/att_stride)
 
         if bbox_w_att<=0 or bbox_h_att<=0:
-            print(attention.shape)
-            return attention
+            return attention,
 
         localmask = F.interpolate(localmask, size=(bbox_h_att, bbox_w_att), mode='bilinear', align_corners=True)
 
@@ -474,8 +473,7 @@ class SOLOAttHead(nn.Module):
             w_max = w_max_raw
             w_local_max = bbox_w_att
         if (w_local_min>=bbox_w_att-1) or (w_local_max<=0) or (w_local_max<=w_local_min):
-            print(attention.shape)
-            return attention
+            return attention,
 
         if h_min_raw < 0:
             h_min = 0
@@ -490,13 +488,11 @@ class SOLOAttHead(nn.Module):
             h_max = h_max_raw
             h_local_max = bbox_h_att
         if (h_local_min>=bbox_h_att-1) or (h_local_max<=0) or (h_local_max<=h_local_min):
-            print(attention.shape)
-            return attention
+            return attention,
 
         attention[0,0,h_min:h_max,w_min:w_max] = localmask[0,0,h_local_min:h_local_max,w_local_min:w_local_max]
 
-        print(attention.shape)
-        return attention, attention
+        return attention, 
 
 
     def forward_mask_feat(self, feats):
@@ -613,9 +609,7 @@ class SOLOAttHead(nn.Module):
         attention_maps = [] 
 
         for j in range(len(self.strides)):
-            tmp = self.get_att_single(featmap_sizes[j],self.strides[j],feature_pred,size_preds[j],offset_preds[j],localmask_preds[j],ins_img_index[j][0],ins_ind_index[j][0],is_eval=False)
-            pdb.set_trace()
-            attention_maps_scale, _ = multi_apply(self.get_att_single, 
+            attention_maps_scale, = multi_apply(self.get_att_single, 
                                         [featmap_sizes[j] for i in range(len(ins_ind_index[j]))],
                                         [self.strides[j] for i in range(len(ins_ind_index[j]))],
                                         [feature_pred for i in range(len(ins_ind_index[j]))],
