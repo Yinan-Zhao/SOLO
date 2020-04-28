@@ -626,6 +626,8 @@ class SOLOAttHead(nn.Module):
                                                 [0,1,feature_pred.shape[-2],feature_pred.shape[-1]])
             attention_maps.append(attention_maps_scale)
 
+        pdb.set_trace()
+
         ins_preds_raw, = multi_apply(self.forward_single_inst,  
                                         [feature_pred for i in range(len(new_feats))],
                                         attention_maps,
