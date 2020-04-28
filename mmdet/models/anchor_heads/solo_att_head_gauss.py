@@ -513,6 +513,7 @@ class SOLOAttHead(nn.Module):
         featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
         featmap_sizes_pred = [(featmap.size()[-2]*2, featmap.size()[-1]*2) for featmap in
                          new_feats]
+        pdb.set_trace()
 
         # ins_ind_label_list is a list with only one element
         # ins_ind_label_list[0][0]: 1600,  ins_ind_label_list[0][1]: 1296
