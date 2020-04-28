@@ -757,8 +757,8 @@ class SOLOAttHead(nn.Module):
             for seg_mask, gt_label, gt_bbox in zip(gt_masks, gt_labels, gt_bboxes):
                 if seg_mask.sum() < 10:
                    continue
-                w_raw = gt_bbox[2] - gt_bboxes[0]
-                h_raw = gt_bbox[3] - gt_bboxes[1]
+                w_raw = gt_bbox[2] - gt_bbox[0]
+                h_raw = gt_bbox[3] - gt_bbox[1]
                 ct_raw = np.array([(gt_bbox[0] + gt_bbox[2]) / 2., (gt_bbox[1] + gt_bbox[3]) / 2.], dtype=np.float32)
 
                 ct = ct_raw/stride
@@ -768,7 +768,7 @@ class SOLOAttHead(nn.Module):
                 w = w_raw/stride
                 h = h_raw/stride
 
-                pdb.set_trace()
+                #pdb.set_trace()
 
                 radius = gaussian_radius((math.ceil(h), math.ceil(w)))
                 radius = max(0, int(radius))
@@ -784,7 +784,7 @@ class SOLOAttHead(nn.Module):
                 seg_mask_resize = torch.Tensor(seg_mask_resize)
                 ins_label.append(seg_mask_resize)
 
-                attention_raw = seg_mask[gt_bboxes[1]:gt_bbox[3], gt_bboxes[0]: gt_bbox[2]]
+                attention_raw = seg_mask[gt_bbox[1]:gt_bbox[3], gt_bbox[0]: gt_bbox[2]]
                 attention = mmcv.imrescale(attention_raw, (self.attention_size, self.attention_size))
                 attention = torch.Tensor(attention)
                 attentions.append(attention)
