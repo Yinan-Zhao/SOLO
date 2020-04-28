@@ -803,9 +803,10 @@ class SOLOAttHead(nn.Module):
                 ins_label.append(ins_label_single)
 
                 attention_raw = seg_mask[int(gt_bbox[1]):int(gt_bbox[3]), int(gt_bbox[0]): int(gt_bbox[2])]
-                print(attention_raw.shape)
-                print((self.attention_size, self.attention_size))
-                attention = mmcv.imresize(attention_raw, (self.attention_size, self.attention_size))
+                try:
+                    attention = mmcv.imresize(attention_raw, (self.attention_size, self.attention_size))
+                except:
+                    pdb.set_trace()
                 attention = torch.tensor(attention, dtype=torch.uint8, device=device)
                 attentions.append(attention)
 
