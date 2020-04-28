@@ -139,7 +139,7 @@ class RegL1Loss(nn.Module):
         super(RegL1Loss, self).__init__()
   
     def forward(self, output, target):
-        loss = F.l1_loss(pred, target, size_average=True)
+        loss = F.l1_loss(output, target, size_average=True)
         return loss
 
 class Scale(nn.Module):
