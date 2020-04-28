@@ -704,7 +704,6 @@ class SOLOAttHead(nn.Module):
                 offset_preds_select.append(torch.index_select(offset_preds[level_idx][img_idx], 0, indices))
                 size_preds_select.append(torch.index_select(size_preds[level_idx][img_idx], 0, indices))
         offset_preds_select = torch.cat(offset_preds_select)
-        pdb.set_trace()
         offset_gt_select = torch.cat([torch.cat(offset_img) for offset_img in offset_list])
         loss_offset = self.loss_offset(offset_preds_select, offset_gt_select)
         loss_offset = loss_offset * self.offset_loss_weight
@@ -791,8 +790,8 @@ class SOLOAttHead(nn.Module):
                 draw_umich_gaussian(cate_label[gt_label], ct_int, radius)
 
                 ins_ind_index.append(ct_int[1]*featmap_size[1]+ct_int[0])
-                offsets.append(torch.tensor(offset_gt, device=device))
-                sizes.append(torch.tensor([w_raw, h_raw], device=device))
+                offsets.append(torch.tensor(offset_gt, dtype=torch.float32, device=device))
+                sizes.append(torch.tensor([w_raw, h_raw], dtype=torch.float32, device=device))
                 
                 # ins
                 seg_mask_resize = mmcv.imrescale(seg_mask, scale=1. / output_stride)
