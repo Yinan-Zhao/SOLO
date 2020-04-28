@@ -428,7 +428,6 @@ class SOLOAttHead(nn.Module):
         return y
 
     def get_att_single(self, featmap_size, stride, feature_pred, size_pred, offset_pred, localmask_pred, img_idx, position_idx, is_eval=False):
-        pdb.set_trace()
         device = feature_pred.device
         target_type = feature_pred.dtype
         N, c, h, w = feature_pred.shape
@@ -449,6 +448,7 @@ class SOLOAttHead(nn.Module):
         bbox_h_att = int(bbox_h/att_stride)
 
         if bbox_w_att<=0 or bbox_h_att<=0:
+            pdb.set_trace()
             return attention
 
         localmask = F.interpolate(localmask, size=(bbox_h_att, bbox_w_att), mode='bilinear', align_corners=True)
@@ -474,6 +474,7 @@ class SOLOAttHead(nn.Module):
             w_max = w_max_raw
             w_local_max = bbox_w_att
         if (w_local_min>=bbox_w_att-1) or (w_local_max<=0) or (w_local_max<=w_local_min):
+            pdb.set_trace()
             return attention
 
         if h_min_raw < 0:
