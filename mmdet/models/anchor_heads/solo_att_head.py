@@ -512,7 +512,7 @@ class SOLOAttHead(nn.Module):
                 assert featmap_size is not None
                 inst_pred = F.interpolate(inst_pred, size=(featmap_size[0]*2,featmap_size[1]*2), mode='bilinear')
         else:
-            inst_pred = self.create_zeros_as(mask_feat, [0,1,mask_feat[-2],mask_feat[-1]])
+            inst_pred = self.create_zeros_as(mask_feat, [0,1,mask_feat.shape[-2],mask_feat.shape[-1]])
 
         return inst_pred,
 
