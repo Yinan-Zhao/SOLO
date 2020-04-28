@@ -789,12 +789,12 @@ class SOLOAttHead(nn.Module):
                 
                 # ins
                 seg_mask_resize = mmcv.imrescale(seg_mask, scale=1. / output_stride)
-                seg_mask_resize = torch.Tensor(seg_mask_resize)
+                seg_mask_resize = torch.tensor(seg_mask_resize, dtype=torch.uint8, device=device)
                 ins_label.append(seg_mask_resize)
 
                 attention_raw = seg_mask[int(gt_bbox[1]):int(gt_bbox[3]), int(gt_bbox[0]): int(gt_bbox[2])]
-                attention = mmcv.imrescale(attention_raw, (self.attention_size, self.attention_size))
-                attention = torch.Tensor(attention)
+                attention = mmcv.imresize(attention_raw, (self.attention_size, self.attention_size))
+                attention = torch.tensor(attention, dtype=torch.uint8, device=device)
                 attentions.append(attention)
 
                 #pdb.set_trace()
@@ -804,7 +804,7 @@ class SOLOAttHead(nn.Module):
             ins_ind_index_list.append(ins_ind_index)
             offset_list.append(torch.stack(offsets, dim=0))
             size_list.append(torch.stack(sizes, dim=0))
-            pdb.set_trace()
+            #pdb.set_trace()
             attention_list.append(torch.stack(attentions, dim=0))
         return ins_label_list, cate_label_list, ins_ind_index_list, offset_list, size_list, attention_list
 
