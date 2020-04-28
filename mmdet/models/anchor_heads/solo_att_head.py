@@ -571,6 +571,7 @@ class SOLOAttHead(nn.Module):
         # ins_labels[0].shape: [8, 272, 200]
         # ins_labels[1].shape: [10, 272, 200]
         # ins_labels[2].shape: [34, 136, 100]
+        pdb.set_trace()
         ins_labels = [torch.cat(list(ins_labels_level), 0) for ins_labels_level in zip(*ins_label_list)]
         attention_labels = [torch.cat(list(att_labels_level), 0) for att_labels_level in zip(*attention_list)]
 
