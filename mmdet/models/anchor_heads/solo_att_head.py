@@ -448,7 +448,6 @@ class SOLOAttHead(nn.Module):
         bbox_h_att = int(bbox_h/att_stride)
 
         if bbox_w_att<=0 or bbox_h_att<=0:
-            pdb.set_trace()
             return attention
 
         localmask = F.interpolate(localmask, size=(bbox_h_att, bbox_w_att), mode='bilinear', align_corners=True)
@@ -474,7 +473,6 @@ class SOLOAttHead(nn.Module):
             w_max = w_max_raw
             w_local_max = bbox_w_att
         if (w_local_min>=bbox_w_att-1) or (w_local_max<=0) or (w_local_max<=w_local_min):
-            pdb.set_trace()
             return attention
 
         if h_min_raw < 0:
@@ -493,7 +491,6 @@ class SOLOAttHead(nn.Module):
             return attention
 
         attention[0,0,h_min:h_max,w_min:w_max] = localmask[0,0,h_local_min:h_local_max,w_local_min:w_local_max]
-        pdb.set_trace()
 
         return attention
 
@@ -622,7 +619,7 @@ class SOLOAttHead(nn.Module):
                                         ins_img_index[j],
                                         ins_ind_index[j],
                                         is_eval=False)
-            #pdb.set_trace()
+            pdb.set_trace()
             if len(attention_maps_scale):
                 attention_maps_scale = torch.cat(attention_maps_scale, dim=0)
             else:
