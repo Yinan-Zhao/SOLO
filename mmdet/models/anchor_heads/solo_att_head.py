@@ -812,13 +812,20 @@ class SOLOAttHead(nn.Module):
 
                 #pdb.set_trace()
             assert len(ins_label) == len(ins_ind_index) == len(offsets) == len(sizes) == len(attentions)
-            ins_label_list.append(torch.stack(ins_label, dim=0))
-            cate_label_list.append(torch.tensor(cate_label, device=device))
-            ins_ind_index_list.append(ins_ind_index)
-            offset_list.append(torch.stack(offsets, dim=0))
-            size_list.append(torch.stack(sizes, dim=0))
-            #pdb.set_trace()
-            attention_list.append(torch.stack(attentions, dim=0))
+            if len(ins_label):
+                ins_label_list.append(torch.stack(ins_label, dim=0))
+                cate_label_list.append(torch.tensor(cate_label, device=device))
+                ins_ind_index_list.append(ins_ind_index)
+                offset_list.append(torch.stack(offsets, dim=0))
+                size_list.append(torch.stack(sizes, dim=0))
+                attention_list.append(torch.stack(attentions, dim=0))
+            else:
+                ins_label_list.append(torch.zeros([0, featmap_size[0]*2, featmap_size[1]*2], dtype=torch.uint8, device=device))
+                cate_label_list.append(torch.tensor(cate_label, device=device))
+                ins_ind_index_list.append(ins_ind_index)
+                offset_list.append(torch.zeros([0, 2], dtype=torch.float32, device=device))
+                size_list.append(torch.zeros([0, 2], dtype=torch.float32, device=device))
+                attention_list.append(torch.zeros([0, self.attention_size,self.attention_size], dtype=torch.uint8, device=device))
         return ins_label_list, cate_label_list, ins_ind_index_list, offset_list, size_list, attention_list
 
     def get_seg(self, feats, img_metas, cfg, rescale=None):
