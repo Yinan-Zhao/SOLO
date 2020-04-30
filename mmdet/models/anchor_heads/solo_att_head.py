@@ -22,6 +22,10 @@ INF = 1e8
 
 from scipy import ndimage
 
+def _sigmoid(x):
+  y = torch.clamp(x.sigmoid(), min=1e-4, max=1-1e-4)
+  return y
+
 def gaussian2D(shape, sigma=1):
     m, n = [(ss - 1.) / 2. for ss in shape]
     y, x = np.ogrid[-m:m+1,-n:n+1]
@@ -705,7 +709,7 @@ class SOLOAttHead(nn.Module):
             for cate_label in cate_labels
         ]
         flatten_cate_labels = torch.cat(cate_labels)
-        loss_cate = self.loss_cate(flatten_cate_preds.sigmoid(), flatten_cate_labels)
+        loss_cate = self.loss_cate(_sigmoid(flatten_cate_preds), flatten_cate_labels)
 
         # offset loss, size loss
         offset_preds = [
