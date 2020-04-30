@@ -160,7 +160,7 @@ def _nms(heat, kernel=3):
 
 def _topk(scores, K=40):
     batch, cat, height, width = scores.size()
-    pdb.set_trace()
+    K = min(K, height*width)
       
     topk_scores, topk_inds = torch.topk(scores.view(batch, cat, -1), K)
 
