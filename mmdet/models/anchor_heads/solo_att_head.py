@@ -150,12 +150,31 @@ class Scale(nn.Module):
     def forward(self, input):
         return input * self.scale
 
-def points_nms(heat, kernel=2):
-    # kernel must be 2
+def _nms(heat, kernel=3):
+    pad = (kernel - 1) // 2
+
     hmax = nn.functional.max_pool2d(
-        heat, (kernel, kernel), stride=1, padding=1)
-    keep = (hmax[:, :, :-1, :-1] == heat).float()
+        heat, (kernel, kernel), stride=1, padding=pad)
+    keep = (hmax == heat).float()
     return heat * keep
+
+def _topk(scores, K=40):
+    batch, cat, height, width = scores.size()
+      
+    topk_scores, topk_inds = torch.topk(scores.view(batch, cat, -1), K)
+
+    topk_inds = topk_inds % (height * width)
+    topk_ys   = (topk_inds / width).int().float()
+    topk_xs   = (topk_inds % width).int().float()
+      
+    topk_score, topk_ind = torch.topk(topk_scores.view(batch, -1), K)
+    topk_clses = (topk_ind / K).int()
+    topk_inds = _gather_feat(
+        topk_inds.view(batch, -1, 1), topk_ind).view(batch, K)
+    topk_ys = _gather_feat(topk_ys.view(batch, -1, 1), topk_ind).view(batch, K)
+    topk_xs = _gather_feat(topk_xs.view(batch, -1, 1), topk_ind).view(batch, K)
+
+    return topk_score, topk_inds, topk_clses, topk_ys, topk_xs
 
 def dice_loss(input, target):
     input = input.contiguous().view(input.size()[0], -1)
@@ -232,12 +251,12 @@ class SOLOAttHead(nn.Module):
                  inst_feat_channels=8,
                  inst_convs=1,
                  stacked_convs=4,
-                 local_mask_size=16,
                  strides=(4, 8, 16, 32, 64),
                  base_edge_list=(16, 32, 64, 128, 256),
                  scale_ranges=((8, 32), (16, 64), (32, 128), (64, 256), (128, 512)),
                  sigma=0.4,
                  cate_down_pos=0,
+                 test_num=100,
                  with_deform=False,
                  loss_ins=None,
                  loss_cate=None,
@@ -255,10 +274,10 @@ class SOLOAttHead(nn.Module):
         self.inst_feat_channels = inst_feat_channels
         self.num_inst_convs = inst_convs
         self.stacked_convs = stacked_convs
-        self.local_mask_size = local_mask_size
         self.strides = strides
         self.sigma = sigma
         self.cate_down_pos = cate_down_pos
+        self.test_num = test_num
         self.base_edge_list = base_edge_list
         self.scale_ranges = scale_ranges
         self.with_deform = with_deform
@@ -386,7 +405,7 @@ class SOLOAttHead(nn.Module):
                     padding=1,
                     norm_cfg=norm_cfg,
                     bias=norm_cfg is None))
-        self.localmask_convs.append(ConvModule(self.seg_feat_channels, self.local_mask_size**2, 
+        self.localmask_convs.append(ConvModule(self.seg_feat_channels, self.attention_size**2, 
                                                 3, padding=1, activation=None, bias=True))
         
         self.solo_mask = ConvModule(
@@ -507,7 +526,7 @@ class SOLOAttHead(nn.Module):
         if attention.shape[0]:
             inst_pred = self.inst_convs(mask_feat, attention, ins_ind_count)
             if is_eval:
-                inst_pred = inst_pred.sigmoid()
+                inst_pred = inst_pred.sigmoid_()
             else:
                 assert featmap_size is not None
                 inst_pred = F.interpolate(inst_pred, size=(featmap_size[0]*2,featmap_size[1]*2), mode='bilinear')
@@ -541,7 +560,7 @@ class SOLOAttHead(nn.Module):
             localmask_feat = localmask_layer(localmask_feat)
 
         if is_eval:
-            cate_feat = points_nms(cate_feat.sigmoid(), kernel=2).permute(0, 2, 3, 1)
+            cate_feat = _nms(cate_feat.sigmoid_())
         return cate_feat, size_feat, offset_feat, localmask_feat
 
     def loss(self,
@@ -685,7 +704,7 @@ class SOLOAttHead(nn.Module):
             for cate_label in cate_labels
         ]
         flatten_cate_labels = torch.cat(cate_labels)
-        loss_cate = self.loss_cate(flatten_cate_preds.sigmoid_(), flatten_cate_labels)
+        loss_cate = self.loss_cate(flatten_cate_preds.sigmoid(), flatten_cate_labels)
 
         # offset loss, size loss
         offset_preds = [
@@ -829,89 +848,72 @@ class SOLOAttHead(nn.Module):
         return ins_label_list, cate_label_list, ins_ind_index_list, offset_list, size_list, attention_list
 
     def get_seg(self, feats, img_metas, cfg, rescale=None):
-        new_feats = self.split_feats(feats)
+        new_feats = feats
+        #new_feats = self.split_feats(feats)
         featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
-        #upsampled_size = (featmap_sizes[0][0] * 2, featmap_sizes[0][1] * 2)
 
-        feature_add_all_level = self.feature_convs[0](feats[0]) 
-        for i in range(1,3):
-            feature_add_all_level = feature_add_all_level + self.feature_convs[i](feats[i])
-        feature_add_all_level = feature_add_all_level + self.feature_convs[3](feats[3])
+        # forward mask feature
+        feature_pred = self.forward_mask_feat(feats)  
 
-        feature_pred = self.solo_mask(feature_add_all_level)  
+        # forward category heads
+        cate_preds, size_preds, offset_preds, localmask_preds = multi_apply(self.forward_single_cat, 
+                                                                        new_feats, 
+                                                                        list(range(len(self.strides))),
+                                                                        is_eval=True)
 
-        cate_preds, = multi_apply(self.forward_single_cat, 
-                                new_feats, 
-                                list(range(len(self.seg_num_grids))),
-                                is_eval=True)
-
-
-
-
-        num_levels = len(self.seg_num_grids)
+        num_levels = len(self.strides)
         #print('num_levels: ' + '%d'%(num_levels))
         featmap_size_seg = feature_pred.size()[-2:]
 
         result_list = []
         for img_id in range(len(img_metas)):            
-            '''cate_pred_list = [
-                cate_preds[i][img_id].view(-1, self.cate_out_channels).detach() for i in range(num_levels)
-            ]'''
-            
             img_shape = img_metas[img_id]['img_shape']
             scale_factor = img_metas[img_id]['scale_factor']
             ori_shape = img_metas[img_id]['ori_shape']
-
-            #print(img_metas[img_id]['filename'])
 
             attention_maps = [] 
             cate_scores_list = []
             cate_labels_list = []
             strides_list = []
+            ins_ind_count_img = []
 
             for j in range(num_levels):
-                cate_preds_level = cate_preds[j][img_id].view(-1, self.cate_out_channels).detach()
-                inds_level = (cate_preds_level > cfg.score_thr)
-                cate_scores_level = cate_preds_level[inds_level]
-                #print('cate_scores_level: ' + '%d'%(len(cate_scores_level)))
-                if len(cate_scores_level) == 0:
-                    continue
-                inds_level = inds_level.nonzero()
-                cate_labels_level = inds_level[:, 1]
+                scores, inds, clses, _, _ = _topk(cate_preds[j][img_id:img_id+1], K=self.test_num)
 
-                strides = cate_preds_level.new_ones(inds_level.shape[0])
+                strides = cate_preds[j][img_id:img_id+1].new_ones(inds.shape[1])
                 strides *= self.strides[j]
 
                 attention_maps_scale, = multi_apply(self.get_att_single, 
-                                            [j for i in range(len(inds_level[:,0]))],
-                                            [feature_pred[None,img_id] for i in range(len(inds_level[:,0]))],
-                                            inds_level[:,0],
-                                            is_eval=True)
-                attention_maps_scale = torch.cat(attention_maps_scale, dim=0)
+                                        [featmap_sizes[j] for i in range(len(inds[0]))],
+                                        [self.strides[j] for i in range(len(inds[0]))],
+                                        [feature_pred[img_id:img_id+1] for i in range(len(inds[0]))],
+                                        [size_preds[j][img_id:img_id+1] for i in range(len(inds[0]))],
+                                        [offset_preds[j][img_id:img_id+1] for i in range(len(inds[0]))],
+                                        [localmask_preds[j][img_id:img_id+1] for i in range(len(inds[0]))],
+                                        [0]*len(inds[0]),
+                                        inds[0],
+                                        is_eval=True)
+                attention_maps_scale = torch.cat(attention_maps_scale, dim=0) 
 
                 attention_maps.append(attention_maps_scale)
                 strides_list.append(strides)
-                cate_labels_list.append(cate_labels_level)
-                cate_scores_list.append(cate_scores_level)
+                cate_labels_list.append(clses[0])
+                cate_scores_list.append(scores[0])
+                ins_ind_count_img.append([len(inds[0])])
 
-            if len(attention_maps) == 0:
-                #pdb.set_trace()
-                result_list.append(None)
-                continue
-
-            seg_pred_list, = multi_apply(self.forward_single_inst, 
-                                        [feature_pred[None,img_id] for i in range(len(new_feats))],
-                                        attention_maps,
-                                        list(range(len(new_feats))),
-                                        is_eval=True)
+            seg_pred_list, = multi_apply(self.forward_single_inst,  
+                                            [feature_pred[img_id:img_id+1] for i in range(len(self.strides))],
+                                            attention_maps,
+                                            ins_ind_count_img,
+                                            list(range(len(self.strides))),
+                                            featmap_sizes,
+                                            is_eval=True)
 
             cate_scores_list = torch.cat(cate_scores_list, dim=0)
             cate_labels_list = torch.cat(cate_labels_list, dim=0)
             seg_pred_list = torch.cat(seg_pred_list, dim=0)
             strides_list = torch.cat(strides_list, dim=0)
             attention_maps_list = torch.cat(attention_maps, dim=0)
-
-            #print(seg_pred_list.shape[0])
 
             result = self.get_seg_single(cate_scores_list, cate_labels_list, seg_pred_list, attention_maps_list,strides_list, featmap_size_seg, img_shape, ori_shape, scale_factor, cfg, rescale)
             result_list.append(result)
@@ -958,38 +960,6 @@ class SOLOAttHead(nn.Module):
         seg_scores = (seg_preds * seg_masks.float()).sum((1, 2)) / sum_masks
         cate_scores *= seg_scores
 
-        # sort and keep top nms_pre
-        sort_inds = torch.argsort(cate_scores, descending=True)
-        if len(sort_inds) > cfg.nms_pre:
-            sort_inds = sort_inds[:cfg.nms_pre]
-        seg_masks = seg_masks[sort_inds, :, :]
-        seg_preds = seg_preds[sort_inds, :, :]
-        attention_maps = attention_maps[sort_inds, ...]
-        sum_masks = sum_masks[sort_inds]
-        cate_scores = cate_scores[sort_inds]
-        cate_labels = cate_labels[sort_inds]
-
-        # Matrix NMS
-        cate_scores = matrix_nms(seg_masks, cate_labels, cate_scores,
-                                 kernel=cfg.kernel, sigma=cfg.sigma, sum_masks=sum_masks)
-
-        # filter.
-        keep = cate_scores >= cfg.update_thr
-        if keep.sum() == 0:
-            return None
-        seg_preds = seg_preds[keep, :, :]
-        attention_maps = attention_maps[keep, ...]
-        cate_scores = cate_scores[keep]
-        cate_labels = cate_labels[keep]
-
-        # sort and keep top_k
-        sort_inds = torch.argsort(cate_scores, descending=True)
-        if len(sort_inds) > cfg.max_per_img:
-            sort_inds = sort_inds[:cfg.max_per_img]
-        seg_preds = seg_preds[sort_inds, :, :]
-        attention_maps = attention_maps[sort_inds, ...]
-        cate_scores = cate_scores[sort_inds]
-        cate_labels = cate_labels[sort_inds]
 
         seg_preds = F.interpolate(seg_preds.unsqueeze(0),
                                   size=upsampled_size_out,
