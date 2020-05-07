@@ -981,6 +981,6 @@ class SOLOAttHead(nn.Module):
                                   size=ori_shape[:2],
                                   mode='bilinear').squeeze(0)
         attention_masks = attention_masks > 0
-        return seg_masks, cate_labels, cate_scores
-        #return attention_masks, cate_labels, cate_scores
+        #return seg_masks, cate_labels, cate_scores
+        return attention_masks, cate_labels, cate_scores
         
