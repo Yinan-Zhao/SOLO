@@ -532,10 +532,10 @@ class SOLOAttHead(nn.Module):
         offset_w, offset_h = offset_pred[img_idx,:,idx_h,idx_w].detach().cpu().numpy()
         bbox_w, bbox_h = size_pred[img_idx,:,idx_h,idx_w].detach().cpu().numpy()
 
-        bbox[0] = idx_w*stride + offset_w - bbox_w/2.
-        bbox[2] = idx_w*stride + offset_w + bbox_w/2.
-        bbox[1] = idx_h*stride + offset_h - bbox_h/2.
-        bbox[3] = idx_h*stride + offset_h + bbox_h/2.
+        bbox[0,0] = idx_w*stride + offset_w - bbox_w/2.
+        bbox[0,2] = idx_w*stride + offset_w + bbox_w/2.
+        bbox[0,1] = idx_h*stride + offset_h - bbox_h/2.
+        bbox[0,3] = idx_h*stride + offset_h + bbox_h/2.
 
         return bbox, 
 
