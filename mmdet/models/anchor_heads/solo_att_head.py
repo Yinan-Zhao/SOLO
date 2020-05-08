@@ -1035,7 +1035,6 @@ class SOLOAttHead(nn.Module):
 
             for j in range(num_levels):
                 scores, inds, clses, _, _ = _topk(cate_preds[j][img_id:img_id+1], K=self.test_num)
-                pdb.set_trace()
 
                 bbox, = multi_apply(self.get_att_single, 
                                         [featmap_sizes[j] for i in range(len(inds[0]))],
@@ -1057,6 +1056,8 @@ class SOLOAttHead(nn.Module):
             cate_scores_list = torch.cat(cate_scores_list, dim=0)
             cate_labels_list = torch.cat(cate_labels_list, dim=0)
             bboxes_list = torch.cat(bboxes_list, dim=0)
+
+            pdb.set_trace()
 
             result = (bboxes_list, cate_labels_list)
             result_list.append(result)
