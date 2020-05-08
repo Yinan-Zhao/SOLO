@@ -7,6 +7,7 @@ import torch.nn as nn
 
 from mmdet.core import auto_fp16, get_classes, tensor2imgs
 from mmdet.utils import print_log
+import pdb
 
 
 class BaseDetector(nn.Module, metaclass=ABCMeta):
@@ -175,6 +176,7 @@ class BaseDetector(nn.Module, metaclass=ABCMeta):
                     mask = maskUtils.decode(segms[i]).astype(np.bool)
                     img_show[mask] = img_show[mask] * 0.5 + color_mask * 0.5
             # draw bounding boxes
+            pdb.set_trace()
             labels = [
                 np.full(bbox.shape[0], i, dtype=np.int32)
                 for i, bbox in enumerate(bbox_result)
