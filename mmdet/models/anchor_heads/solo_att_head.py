@@ -1035,6 +1035,7 @@ class SOLOAttHead(nn.Module):
 
             for j in range(num_levels):
                 scores, inds, clses, _, _ = _topk(cate_preds[j][img_id:img_id+1], K=self.test_num)
+                pdb.set_trace()
 
                 bbox, = multi_apply(self.get_att_single, 
                                         [featmap_sizes[j] for i in range(len(inds[0]))],
