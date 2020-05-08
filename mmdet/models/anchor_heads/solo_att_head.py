@@ -1047,6 +1047,8 @@ class SOLOAttHead(nn.Module):
                                         is_eval=True)
                 bboxes_scale = torch.cat(bbox, dim=0) 
                 bboxes_scale[:,-1] = scores
+                if rescale:
+                    bboxes_scale[:,:4] /= bboxes_scale[:,:4].new_tensor(scale_factor)
 
                 bboxes_list.append(bboxes_scale)
                 cate_labels_list.append(clses[0])
