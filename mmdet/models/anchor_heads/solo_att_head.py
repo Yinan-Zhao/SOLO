@@ -518,7 +518,7 @@ class SOLOAttHead(nn.Module):
 
         return attention, '''
 
-    def get_att_single(self, featmap_size, feature_pred, size_pred, offset_pred, img_idx, position_idx, is_eval=False):
+    def get_att_single(self, featmap_size, stride, feature_pred, size_pred, offset_pred, img_idx, position_idx, is_eval=False):
         device = feature_pred.device
         target_type = feature_pred.dtype
         N, c, h, w = feature_pred.shape
@@ -1038,6 +1038,7 @@ class SOLOAttHead(nn.Module):
 
                 bbox, = multi_apply(self.get_att_single, 
                                         [featmap_sizes[j] for i in range(len(inds[0]))],
+                                        [self.strides[j] for i in range(len(inds[0]))],
                                         [feature_pred[img_id:img_id+1] for i in range(len(inds[0]))],
                                         [size_preds[j][img_id:img_id+1] for i in range(len(inds[0]))],
                                         [offset_preds[j][img_id:img_id+1] for i in range(len(inds[0]))],
