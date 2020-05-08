@@ -14,7 +14,6 @@ from mmcv.runner import get_dist_info, init_dist, load_checkpoint
 from mmdet.core import coco_eval, results2json, wrap_fp16_model
 from mmdet.datasets import build_dataloader, build_dataset
 from mmdet.models import build_detector
-import pdb
 
 
 def single_gpu_test(model, data_loader, show=False):
@@ -26,7 +25,6 @@ def single_gpu_test(model, data_loader, show=False):
         with torch.no_grad():
             result = model(return_loss=False, rescale=not show, **data)
         results.append(result)
-        pdb.set_trace()
 
         if show:
             model.module.show_result(data, result)
