@@ -1057,8 +1057,6 @@ class SOLOAttHead(nn.Module):
             cate_labels_list = torch.cat(cate_labels_list, dim=0)
             bboxes_list = torch.cat(bboxes_list, dim=0)
 
-            pdb.set_trace()
-
             result = (bboxes_list, cate_labels_list)
             result_list.append(result)
         return result_list
