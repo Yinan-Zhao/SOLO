@@ -451,7 +451,7 @@ class SOLOAttHead(nn.Module):
         y = torch.zeros(shape, dtype=target_type, device=device)
         return y
 
-    def get_att_single(self, featmap_size, stride, feature_pred, size_pred, offset_pred, localmask_pred, img_idx, position_idx, is_eval=False):
+    '''def get_att_single(self, featmap_size, stride, feature_pred, size_pred, offset_pred, localmask_pred, img_idx, position_idx, is_eval=False):
         device = feature_pred.device
         target_type = feature_pred.dtype
         N, c, h, w = feature_pred.shape
@@ -516,7 +516,28 @@ class SOLOAttHead(nn.Module):
 
         attention[0,0,h_min:h_max,w_min:w_max] = localmask[0,0,h_local_min:h_local_max,w_local_min:w_local_max]
 
-        return attention, 
+        return attention, '''
+
+    def get_att_single(self, featmap_size, feature_pred, size_pred, offset_pred, img_idx, position_idx, is_eval=False):
+        device = feature_pred.device
+        target_type = feature_pred.dtype
+        N, c, h, w = feature_pred.shape
+
+        bbox = torch.zeros([1, 5], dtype=target_type, device=device)
+
+        idx = position_idx % (featmap_size[0]*featmap_size[1])
+        idx_h = idx // featmap_size[1]
+        idx_w = idx % featmap_size[1]
+
+        offset_w, offset_h = offset_pred[img_idx,:,idx_h,idx_w].detach().cpu().numpy()
+        bbox_w, bbox_h = size_pred[img_idx,:,idx_h,idx_w].detach().cpu().numpy()
+
+        bbox[0] = idx_w*stride + offset_w - bbox_w/2.
+        bbox[2] = idx_w*stride + offset_w + bbox_w/2.
+        bbox[1] = idx_h*stride + offset_h - bbox_h/2.
+        bbox[3] = idx_h*stride + offset_h + bbox_h/2.
+
+        return bbox, 
 
 
     def forward_mask_feat(self, feats):
@@ -852,7 +873,7 @@ class SOLOAttHead(nn.Module):
                 attention_list.append(torch.zeros([0, self.attention_size,self.attention_size], dtype=torch.uint8, device=device))
         return ins_label_list, cate_label_list, ins_ind_index_list, offset_list, size_list, attention_list
 
-    def get_seg(self, feats, img_metas, cfg, rescale=None):
+    '''def get_seg(self, feats, img_metas, cfg, rescale=None):
         new_feats = feats
         #new_feats = self.split_feats(feats)
         featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
@@ -982,5 +1003,61 @@ class SOLOAttHead(nn.Module):
                                   mode='bilinear').squeeze(0)
         attention_masks = attention_masks > 0
         #return seg_masks, cate_labels, cate_scores
-        return attention_masks, cate_labels, cate_scores
+        return attention_masks, cate_labels, cate_scores'''
+
+    def get_seg(self, feats, img_metas, cfg, rescale=None):
+        new_feats = feats
+        #new_feats = self.split_feats(feats)
+        featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
+
+        # forward mask feature
+        feature_pred = self.forward_mask_feat(feats)  
+
+        # forward category heads
+        cate_preds, size_preds, offset_preds, localmask_preds = multi_apply(self.forward_single_cat, 
+                                                                        new_feats, 
+                                                                        list(range(len(self.strides))),
+                                                                        is_eval=True)
+
+        num_levels = len(self.strides)
+        #print('num_levels: ' + '%d'%(num_levels))
+        featmap_size_seg = feature_pred.size()[-2:]
+
+        result_list = []
+        for img_id in range(len(img_metas)):            
+            img_shape = img_metas[img_id]['img_shape']
+            scale_factor = img_metas[img_id]['scale_factor']
+            ori_shape = img_metas[img_id]['ori_shape']
+
+            cate_scores_list = []
+            cate_labels_list = []
+            bboxes_list = []
+
+            for j in range(num_levels):
+                scores, inds, clses, _, _ = _topk(cate_preds[j][img_id:img_id+1], K=self.test_num)
+
+                bbox, = multi_apply(self.get_att_single, 
+                                        [featmap_sizes[j] for i in range(len(inds[0]))],
+                                        [feature_pred[img_id:img_id+1] for i in range(len(inds[0]))],
+                                        [size_preds[j][img_id:img_id+1] for i in range(len(inds[0]))],
+                                        [offset_preds[j][img_id:img_id+1] for i in range(len(inds[0]))],
+                                        [0]*len(inds[0]),
+                                        inds[0],
+                                        is_eval=True)
+                bboxes_scale = torch.cat(bbox, dim=0) 
+                bboxes_scale[:,-1] = scores
+
+                bboxes_list.append(bboxes_scale)
+                cate_labels_list.append(clses[0])
+                cate_scores_list.append(scores[0])
+
+
+            cate_scores_list = torch.cat(cate_scores_list, dim=0)
+            cate_labels_list = torch.cat(cate_labels_list, dim=0)
+            bboxes_list = torch.cat(bboxes_list, dim=0)
+
+            result = (bboxes_list, cate_labels_list)
+            result_list.append(result)
+        return result_list
+
         
