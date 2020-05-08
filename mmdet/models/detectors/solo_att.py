@@ -1,6 +1,7 @@
 from .single_stage_ins import SingleStageInsDetector
 from ..registry import DETECTORS
 import torch
+from mmdet.core import bbox2result
 
 
 @DETECTORS.register_module
@@ -35,7 +36,7 @@ class SOLOAtt(SingleStageInsDetector):
             seg_inputs = (x, img_meta, self.test_cfg, rescale)
             seg_result = self.bbox_head.get_seg(*seg_inputs)
             return seg_result'''  
-            
+
     def simple_test(self, img, img_meta, rescale=False):
         with torch.no_grad():
             x = self.extract_feat(img)
