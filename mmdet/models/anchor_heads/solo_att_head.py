@@ -986,7 +986,7 @@ class SOLOAttHead(nn.Module):
         seg_scores = (seg_preds * seg_masks.float()).sum((1, 2)) / sum_masks
         cate_scores *= seg_scores
 
-        # Matrix NMS
+        '''# Matrix NMS
         cate_scores = matrix_nms(seg_masks, cate_labels, cate_scores,
                                  kernel=cfg.kernel, sigma=cfg.sigma, sum_masks=sum_masks)
 
@@ -997,7 +997,7 @@ class SOLOAttHead(nn.Module):
         seg_preds = seg_preds[keep, :, :]
         attention_maps = attention_maps[keep, ...]
         cate_scores = cate_scores[keep]
-        cate_labels = cate_labels[keep]
+        cate_labels = cate_labels[keep]'''
 
 
         seg_preds = F.interpolate(seg_preds.unsqueeze(0),
