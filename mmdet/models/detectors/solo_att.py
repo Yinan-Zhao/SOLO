@@ -2,6 +2,7 @@ from .single_stage_ins import SingleStageInsDetector
 from ..registry import DETECTORS
 import torch
 from mmdet.core import bbox2result
+import numpy as np
 
 def merge_outputs(detections, num_classes):
 #     print(detections)
