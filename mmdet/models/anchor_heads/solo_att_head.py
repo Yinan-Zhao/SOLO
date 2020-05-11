@@ -1008,15 +1008,15 @@ class SOLOAttHead(nn.Module):
                                   mode='bilinear').squeeze(0)
         seg_masks = seg_masks > cfg.mask_thr
 
-        '''attention_maps = F.interpolate(attention_maps.unsqueeze(0),
+        attention_maps = F.interpolate(attention_maps.unsqueeze(0),
                                   size=upsampled_size_out,
                                   mode='bilinear')[:, :, :h, :w]
         attention_masks = F.interpolate(attention_maps,
                                   size=ori_shape[:2],
                                   mode='bilinear').squeeze(0)
-        attention_masks = attention_masks > 0'''
-        return seg_masks, cate_labels, cate_scores
-        #return attention_masks, cate_labels, cate_scores
+        attention_masks = attention_masks > 0
+        #return seg_masks, cate_labels, cate_scores
+        return attention_masks, cate_labels, cate_scores
 
     '''def get_seg(self, feats, img_metas, cfg, rescale=None):
         new_feats = feats
