@@ -169,14 +169,14 @@ class SOLOAtt(SingleStageInsDetector):
             *loss_inputs, gt_bboxes_ignore=gt_bboxes_ignore)
         return losses
 
-    '''def simple_test(self, img, img_meta, rescale=False):
+    def simple_test(self, img, img_meta, rescale=False):
         with torch.no_grad():
             x = self.extract_feat(img)
             seg_inputs = (x, img_meta, self.test_cfg, rescale)
             seg_result = self.bbox_head.get_seg(*seg_inputs)
-            return seg_result'''  
+            return seg_result 
 
-    def simple_test(self, img, img_meta, rescale=False):
+    '''def simple_test(self, img, img_meta, rescale=False):
         with torch.no_grad():
             x = self.extract_feat(img)
             seg_inputs = (x, img_meta, self.test_cfg, rescale)
@@ -187,7 +187,7 @@ class SOLOAtt(SingleStageInsDetector):
             ]
             results = merge_outputs(bbox_results[0], 80)
             return results
-            #return bbox_results[0]
+            #return bbox_results[0]'''
 
     
     

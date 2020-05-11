@@ -451,7 +451,7 @@ class SOLOAttHead(nn.Module):
         y = torch.zeros(shape, dtype=target_type, device=device)
         return y
 
-    '''def get_att_single(self, featmap_size, stride, feature_pred, size_pred, offset_pred, localmask_pred, img_idx, position_idx, is_eval=False):
+    def get_att_single(self, featmap_size, stride, feature_pred, size_pred, offset_pred, localmask_pred, img_idx, position_idx, is_eval=False):
         device = feature_pred.device
         target_type = feature_pred.dtype
         N, c, h, w = feature_pred.shape
@@ -516,9 +516,9 @@ class SOLOAttHead(nn.Module):
 
         attention[0,0,h_min:h_max,w_min:w_max] = localmask[0,0,h_local_min:h_local_max,w_local_min:w_local_max]
 
-        return attention, '''
+        return attention, 
 
-    def get_att_single(self, featmap_size, stride, feature_pred, size_pred, offset_pred, img_idx, position_idx, is_eval=False):
+    '''def get_att_single(self, featmap_size, stride, feature_pred, size_pred, offset_pred, img_idx, position_idx, is_eval=False):
         device = feature_pred.device
         target_type = feature_pred.dtype
         N, c, h, w = feature_pred.shape
@@ -537,7 +537,7 @@ class SOLOAttHead(nn.Module):
         bbox[0,1] = idx_h*stride + offset_h - bbox_h/2.
         bbox[0,3] = idx_h*stride + offset_h + bbox_h/2.
 
-        return bbox, 
+        return bbox, '''
 
 
     def forward_mask_feat(self, feats):
@@ -873,7 +873,7 @@ class SOLOAttHead(nn.Module):
                 attention_list.append(torch.zeros([0, self.attention_size,self.attention_size], dtype=torch.uint8, device=device))
         return ins_label_list, cate_label_list, ins_ind_index_list, offset_list, size_list, attention_list
 
-    '''def get_seg(self, feats, img_metas, cfg, rescale=None):
+    def get_seg(self, feats, img_metas, cfg, rescale=None):
         new_feats = feats
         #new_feats = self.split_feats(feats)
         featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
@@ -986,6 +986,19 @@ class SOLOAttHead(nn.Module):
         seg_scores = (seg_preds * seg_masks.float()).sum((1, 2)) / sum_masks
         cate_scores *= seg_scores
 
+        # Matrix NMS
+        cate_scores = matrix_nms(seg_masks, cate_labels, cate_scores,
+                                 kernel=cfg.kernel, sigma=cfg.sigma, sum_masks=sum_masks)
+
+        # filter.
+        keep = cate_scores >= cfg.update_thr
+        if keep.sum() == 0:
+            return None
+        seg_preds = seg_preds[keep, :, :]
+        attention_maps = attention_maps[keep, ...]
+        cate_scores = cate_scores[keep]
+        cate_labels = cate_labels[keep]
+
 
         seg_preds = F.interpolate(seg_preds.unsqueeze(0),
                                   size=upsampled_size_out,
@@ -1003,9 +1016,9 @@ class SOLOAttHead(nn.Module):
                                   mode='bilinear').squeeze(0)
         attention_masks = attention_masks > 0
         #return seg_masks, cate_labels, cate_scores
-        return attention_masks, cate_labels, cate_scores'''
+        return attention_masks, cate_labels, cate_scores
 
-    def get_seg(self, feats, img_metas, cfg, rescale=None):
+    '''def get_seg(self, feats, img_metas, cfg, rescale=None):
         new_feats = feats
         #new_feats = self.split_feats(feats)
         featmap_sizes = [featmap.size()[-2:] for featmap in new_feats]
@@ -1061,6 +1074,6 @@ class SOLOAttHead(nn.Module):
 
             result = (bboxes_list, cate_labels_list)
             result_list.append(result)
-        return result_list
+        return result_list'''
 
         
